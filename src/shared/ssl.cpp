@@ -13,14 +13,15 @@ namespace {
     inline const std::string NL2 = NL + NL;
 
     std::string receive_some_data(BIO *bio) {
-        char buffer[1024];
+        char buffer[1500];
+        retry:
         int len = BIO_read(bio, buffer, sizeof(buffer));
         if (len < 0) {
             tavernmx::ssl::print_errors_and_exit("error in BIO_read");
         } else if (len > 0) {
             return {buffer, static_cast<size_t>(len)};
         } else if (BIO_should_retry(bio)) {
-            return receive_some_data(bio);
+            goto retry;
         } else {
             tavernmx::ssl::print_errors_and_exit("empty BIO_read");
         }
@@ -78,5 +79,22 @@ namespace tavernmx::ssl {
             body += receive_some_data(bio);
         }
         return body;
+    }
+
+    ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio) {
+        if (BIO_do_accept(accept_bio) <= 0) {
+            return nullptr;
+        }
+        return ssl_unique_ptr<BIO>(BIO_pop(accept_bio));
+    }
+
+    void send_http_response(BIO *bio, const std::string &body) {
+        std::string response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+        response += "\r\n";
+
+        BIO_write(bio, response.data(), static_cast<int>(response.size()));
+        BIO_write(bio, body.data(), static_cast<int>(body.size()));
+        BIO_flush(bio);
     }
 }

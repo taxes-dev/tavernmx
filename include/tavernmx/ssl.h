@@ -40,6 +40,13 @@ namespace tavernmx::ssl {
     template<class OpenSSLType>
     using ssl_unique_ptr = std::unique_ptr<OpenSSLType, deleter_of<OpenSSLType>>;
 
+    inline ssl_unique_ptr<BIO> operator|(ssl_unique_ptr<BIO> lower,
+                                         ssl_unique_ptr<BIO> upper) {
+        BIO_push(upper.get(), lower.release());
+        return upper;
+    }
+
+
     struct HttpHeader {
         std::string name;
         std::string content;
@@ -51,6 +58,12 @@ namespace tavernmx::ssl {
         HttpHeader(std::string &&name, std::string &&content) : name{name}, content{content} {}
     };
 
+    inline std::ostream &operator<<(std::ostream &out, const HttpHeader &header) {
+        out << (header.name.empty() ? "(empty)" : header.name) << ": "
+            << (header.content.empty() ? "(empty)" : header.content);
+        return out;
+    }
+
     [[noreturn]] inline void print_errors_and_exit(const char *message) {
         fprintf(stderr, "%s\n", message);
         ERR_print_errors_fp(stderr);
@@ -60,4 +73,9 @@ namespace tavernmx::ssl {
     void send_http_request(BIO *bio, const std::string &line, const std::string &host);
 
     std::string receive_http_message(BIO *bio, std::vector<HttpHeader> &headers_out);
+
+    ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio);
+
+    void send_http_response(BIO *bio, const std::string &body);
+
 }
