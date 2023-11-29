@@ -33,7 +33,7 @@ int main() {
         try {
             std::vector<HttpHeader> headers{};
             std::string request = receive_http_message(bio.get(), headers);
-            std::cout << "Got request:" << std::endl;
+            std::cout << "Got request: " << request.size() << std::endl;
             for (auto &hdr: headers) {
                 std::cout << hdr << std::endl;
             }

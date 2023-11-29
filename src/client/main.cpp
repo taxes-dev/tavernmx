@@ -40,6 +40,7 @@ int main() {
     send_http_request(bio.get(), "GET / HTTP/1.1"s, HOST_NAME);
     std::vector<HttpHeader> headers{};
     std::string response = receive_http_message(bio.get(), headers);
+    std::cout << "Got response: " << response.size() << std::endl;
     for (auto &hdr: headers) {
         std::cout << hdr << std::endl;
     }

@@ -62,7 +62,7 @@ namespace tavernmx::ssl {
             end_of_headers = headers.find(NL2);
         }
         std::string body = headers.substr(end_of_headers + NL2.size());
-        headers.resize(end_of_headers);
+        headers.resize(end_of_headers + NL.size());
         size_t content_length = 0;
 
         auto all_headers = split_headers(headers);
