@@ -78,4 +78,7 @@ namespace tavernmx::ssl {
 
     void send_http_response(BIO *bio, const std::string &body);
 
+    SSL *get_ssl(BIO* bio);
+
+    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string& expected_hostname);
 }

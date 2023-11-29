@@ -7,3 +7,4 @@ find_package(OpenSSL REQUIRED)
 
 add_subdirectory(src/shared)
 add_subdirectory(src/server)
+add_subdirectory(src/client)

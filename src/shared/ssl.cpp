@@ -46,7 +46,11 @@ namespace tavernmx::ssl {
         std::string request = line + NL;
         request += "Host: " + host + NL2;
 
-        BIO_write(bio, request.data(), static_cast<int>(request.size()));
+        int written = BIO_write(bio, request.data(), static_cast<int>(request.size()));
+        if (written < 0)
+        {
+            print_errors_and_exit("BIO_write failed");
+        }
         BIO_flush(bio);
     }
 
@@ -96,5 +100,46 @@ namespace tavernmx::ssl {
         BIO_write(bio, response.data(), static_cast<int>(response.size()));
         BIO_write(bio, body.data(), static_cast<int>(body.size()));
         BIO_flush(bio);
+    }
+
+    SSL *get_ssl(BIO* bio)
+    {
+        SSL *ssl = nullptr;
+        BIO_get_ssl(bio, &ssl);
+        if (ssl == nullptr)
+        {
+            print_errors_and_exit("Error in BIO_get_ssl");
+        }
+        return ssl;
+    }
+
+    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string& expected_hostname){
+        long err = SSL_get_verify_result(ssl);
+        if (err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN || err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT)
+        {
+            const char *msg = X509_verify_cert_error_string(err);
+            std::cerr << "Self-signed certificate encountered: " << err << " " << msg << std::endl;
+            if (!allow_self_signed)
+            {
+                exit(1);
+            }
+        }
+        else if (err != X509_V_OK)
+        {
+            const char *msg = X509_verify_cert_error_string(err);
+            std::cerr << "SSL_get_verify_result: " << err << " " << msg << std::endl;
+            exit(1);
+        }
+        X509 *cert = SSL_get_peer_certificate(ssl);
+        if (cert == nullptr)
+        {
+            std::cerr << "SSL_get_peer_certificate: No certificate was presented by the server" << std::endl;
+            exit(1);
+        }
+        if (X509_check_host(cert, expected_hostname.data(), expected_hostname.size(), 0, nullptr) != 1)
+        {
+            std::cerr << "X509_check_host: Certificate verification error: Hostname mismatch" << std::endl;
+            exit(1);
+        }
     }
 }

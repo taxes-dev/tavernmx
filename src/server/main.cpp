@@ -5,10 +5,6 @@
 #include <libc.h>
 
 using namespace tavernmx::ssl;
-namespace {
-    inline const std::string HOST_NAME{"duckduckgo.com"};
-    inline const std::string HOST_PORT = HOST_NAME + ":443";
-}
 
 int main() {
     auto ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_method()));
@@ -51,23 +47,3 @@ int main() {
     std::cout << "Exit!" << std::endl;
 }
 
-int main_client() {
-    auto ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_client_method()));
-
-    auto bio = ssl_unique_ptr<BIO>(BIO_new_connect(HOST_PORT.c_str()));
-    //BIO_set_nbio(bio.get(), 1);
-    //if (BIO_do_connect_retry(bio.get(), 3, 100) != 1) {
-    if (BIO_do_connect(bio.get()) != 1) {
-        print_errors_and_exit("Error in BIO_do_connect");
-    }
-    bio = std::move(bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(ctx.get(), 1));
-
-    send_http_request(bio.get(), "GET / HTTP/1.1", HOST_NAME);
-    std::vector<HttpHeader> headers{};
-    std::string response = receive_http_message(bio.get(), headers);
-    for (auto &hdr: headers) {
-        std::cout << hdr << std::endl;
-    }
-    std::cout << response << std::endl;
-    return 0;
-}
