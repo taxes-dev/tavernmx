@@ -6,8 +6,8 @@
 using namespace tavernmx::ssl;
 using namespace std::string_literals;
 namespace {
-    inline const std::string HOST_NAME{"localhost"};
-    inline const std::string HOST_PORT = HOST_NAME + ":8080";
+    inline const std::string HOST_NAME{"duckduckgo.com"};
+    inline const std::string HOST_PORT = HOST_NAME + ":443";
 }
 
 int main() {
@@ -22,16 +22,21 @@ int main() {
     }
 
     auto bio = ssl_unique_ptr<BIO>(BIO_new_connect(HOST_PORT.c_str()));
-    //BIO_set_nbio(bio.get(), 1);
-    //if (BIO_do_connect_retry(bio.get(), 3, 100) != 1) {
-    bio = std::move(bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(ctx.get(), 1));
-    if (BIO_do_connect(bio.get()) != 1) {
+    BIO_set_nbio(bio.get(), 1);
+    if (BIO_do_connect_retry(bio.get(), 3, 100) != 1) {
+    //if (BIO_do_connect(bio.get()) != 1) {
         print_errors_and_exit("Error in BIO_do_connect");
     }
+    bio = std::move(bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(ctx.get(), 1));
     SSL_set_tlsext_host_name(get_ssl(bio.get()), HOST_NAME.c_str());
     SSL_set1_host(get_ssl(bio.get()), HOST_NAME.c_str());
     //SSL_set_verify(get_ssl(ssl_bio.get()), SSL_VERIFY_NONE, nullptr);
+    handshake_retry:
     if (BIO_do_handshake(bio.get()) <= 0) {
+        if (BIO_should_retry(bio.get()))
+        {
+            goto handshake_retry;
+        }
         print_errors_and_exit("Error in TLS handshake");
     }
     verify_the_certificate(get_ssl(bio.get()), false, HOST_NAME);

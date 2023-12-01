@@ -16,12 +16,13 @@ namespace {
         char buffer[1500];
         retry:
         int len = BIO_read(bio, buffer, sizeof(buffer));
-        if (len < 0) {
+        if (BIO_should_retry(bio)) {
+            BIO_wait(bio, time(nullptr) + 3, 250);
+            goto retry;
+        } else if (len < 0) {
             tavernmx::ssl::print_errors_and_exit("error in BIO_read");
         } else if (len > 0) {
             return {buffer, static_cast<size_t>(len)};
-        } else if (BIO_should_retry(bio)) {
-            goto retry;
         } else {
             tavernmx::ssl::print_errors_and_exit("empty BIO_read");
         }
@@ -47,8 +48,7 @@ namespace tavernmx::ssl {
         request += "Host: " + host + NL2;
 
         int written = BIO_write(bio, request.data(), static_cast<int>(request.size()));
-        if (written < 0)
-        {
+        if (written < 0) {
             print_errors_and_exit("BIO_write failed");
         }
         BIO_flush(bio);
@@ -102,42 +102,34 @@ namespace tavernmx::ssl {
         BIO_flush(bio);
     }
 
-    SSL *get_ssl(BIO* bio)
-    {
+    SSL *get_ssl(BIO *bio) {
         SSL *ssl = nullptr;
         BIO_get_ssl(bio, &ssl);
-        if (ssl == nullptr)
-        {
+        if (ssl == nullptr) {
             print_errors_and_exit("Error in BIO_get_ssl");
         }
         return ssl;
     }
 
-    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string& expected_hostname){
+    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string &expected_hostname) {
         long err = SSL_get_verify_result(ssl);
-        if (err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN || err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT)
-        {
+        if (err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN || err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
             const char *msg = X509_verify_cert_error_string(err);
             std::cerr << "Self-signed certificate encountered: " << err << " " << msg << std::endl;
-            if (!allow_self_signed)
-            {
+            if (!allow_self_signed) {
                 exit(1);
             }
-        }
-        else if (err != X509_V_OK)
-        {
+        } else if (err != X509_V_OK) {
             const char *msg = X509_verify_cert_error_string(err);
             std::cerr << "SSL_get_verify_result: " << err << " " << msg << std::endl;
             exit(1);
         }
         X509 *cert = SSL_get_peer_certificate(ssl);
-        if (cert == nullptr)
-        {
+        if (cert == nullptr) {
             std::cerr << "SSL_get_peer_certificate: No certificate was presented by the server" << std::endl;
             exit(1);
         }
-        if (X509_check_host(cert, expected_hostname.data(), expected_hostname.size(), 0, nullptr) != 1)
-        {
+        if (X509_check_host(cert, expected_hostname.data(), expected_hostname.size(), 0, nullptr) != 1) {
             std::cerr << "X509_check_host: Certificate verification error: Hostname mismatch" << std::endl;
             exit(1);
         }

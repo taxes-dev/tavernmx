@@ -17,6 +17,7 @@ int main() {
     }
 
     auto accept_bio = ssl_unique_ptr<BIO>(BIO_new_accept("8080"));
+    BIO_set_nbio(accept_bio.get(), 1);
     if (BIO_do_accept(accept_bio.get()) != 1) {
         print_errors_and_exit("Error in BIO_do_accept (binding to port 8080)");
     }
