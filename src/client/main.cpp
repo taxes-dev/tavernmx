@@ -1,13 +1,15 @@
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <tavernmx/ssl.h>
 
 using namespace tavernmx::ssl;
+using namespace tavernmx::messaging;
 using namespace std::string_literals;
 namespace {
-    inline const std::string HOST_NAME{"duckduckgo.com"};
-    inline const std::string HOST_PORT = HOST_NAME + ":443";
+    inline const std::string HOST_NAME{"localhost"};
+    inline const std::string HOST_PORT = HOST_NAME + ":8080";
 }
 
 int main() {
@@ -42,13 +44,15 @@ int main() {
     verify_the_certificate(get_ssl(bio.get()), false, HOST_NAME);
 
     std::cout << "Sending request" << std::endl;
-    send_http_request(bio.get(), "GET / HTTP/1.1"s, HOST_NAME);
-    std::vector<HttpHeader> headers{};
-    std::string response = receive_http_message(bio.get(), headers);
-    std::cout << "Got response: " << response.size() << std::endl;
-    for (auto &hdr: headers) {
-        std::cout << hdr << std::endl;
-    }
-    std::cout << response << std::endl;
+    MessageBlock block{};
+    block.payload.resize(2400);
+    int32_t count = 0;
+    std::transform(std::begin(block.payload), std::end(block.payload), std::begin(block.payload), [&count](unsigned char c) {
+        count++;
+        return static_cast<unsigned char>(count % 255);
+    });
+    block.block_size = static_cast<int32_t>(block.payload.size());
+    send_message(bio.get(), block);
+
     return 0;
 }

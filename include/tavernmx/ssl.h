@@ -12,6 +12,7 @@
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include "tavernmx/messaging.h"
 
 namespace tavernmx::ssl {
     template<class T>
@@ -73,6 +74,10 @@ namespace tavernmx::ssl {
     void send_http_request(BIO *bio, const std::string &line, const std::string &host);
 
     std::string receive_http_message(BIO *bio, std::vector<HttpHeader> &headers_out);
+
+    void send_message(BIO * bio, const messaging::MessageBlock & block);
+
+    std::optional<messaging::MessageBlock> receive_message(BIO * bio);
 
     ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio);
 
