@@ -9,6 +9,7 @@
 using namespace std::string_literals;
 
 namespace {
+    inline const size_t BUFFER_SIZE = 1500;
     inline const std::string NL{"\r\n"};
     inline const std::string NL2 = NL + NL;
 
@@ -58,17 +59,6 @@ namespace {
 }
 
 namespace tavernmx::ssl {
-    void send_http_request(BIO *bio, const std::string &line, const std::string &host) {
-        std::string request = line + NL;
-        request += "Host: " + host + NL2;
-
-        int written = BIO_write(bio, request.data(), static_cast<int>(request.size()));
-        if (written < 0) {
-            print_errors_and_exit("BIO_write failed");
-        }
-        BIO_flush(bio);
-    }
-
     void send_message(BIO *bio, const messaging::MessageBlock &block) {
         auto block_data = messaging::pack_block(block);
         int written = BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size()));
@@ -79,7 +69,7 @@ namespace tavernmx::ssl {
     }
 
     std::optional<messaging::MessageBlock> receive_message(BIO *bio) {
-        unsigned char buffer[1500];
+        unsigned char buffer[BUFFER_SIZE];
         size_t rcvd = receive_bytes(bio, buffer, sizeof(buffer));
         if (rcvd == 0) {
             return {};
@@ -92,38 +82,11 @@ namespace tavernmx::ssl {
             applied += messaging::apply_buffer_to_block(buffer, rcvd, block, applied);
         }
 
+        if (block.payload_size == 0)
+        {
+            return {};
+        }
         return block;
-    }
-
-    std::string receive_http_message(BIO *bio, std::vector<HttpHeader> &headers_out) {
-        std::string headers = receive_some_data(bio);
-        auto end_of_headers = headers.find(NL2);
-        while (end_of_headers == std::string::npos) {
-            headers += receive_some_data(bio);
-            end_of_headers = headers.find(NL2);
-        }
-        std::string body = headers.substr(end_of_headers + NL2.size());
-        headers.resize(end_of_headers + NL.size());
-        size_t content_length = 0;
-
-        auto all_headers = split_headers(headers);
-        headers_out.reserve(all_headers.size());
-        for (const std::string &line: all_headers) {
-            auto colon = line.find(':');
-            if (colon != std::string::npos) {
-                auto &hdr = headers_out.emplace_back(
-                        line.substr(0, colon),
-                        line.substr(colon + 2)
-                );
-                if (hdr.name == "Content-Length"s) {
-                    content_length = std::stoul(hdr.content);
-                }
-            }
-        }
-        while (body.size() < content_length) {
-            body += receive_some_data(bio);
-        }
-        return body;
     }
 
     ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio) {
@@ -131,16 +94,6 @@ namespace tavernmx::ssl {
             return nullptr;
         }
         return ssl_unique_ptr<BIO>(BIO_pop(accept_bio));
-    }
-
-    void send_http_response(BIO *bio, const std::string &body) {
-        std::string response = "HTTP/1.1 200 OK\r\n";
-        response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
-        response += "\r\n";
-
-        BIO_write(bio, response.data(), static_cast<int>(response.size()));
-        BIO_write(bio, body.data(), static_cast<int>(body.size()));
-        BIO_flush(bio);
     }
 
     SSL *get_ssl(BIO *bio) {

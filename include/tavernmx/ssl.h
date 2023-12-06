@@ -47,41 +47,17 @@ namespace tavernmx::ssl {
         return upper;
     }
 
-
-    struct HttpHeader {
-        std::string name;
-        std::string content;
-
-        HttpHeader() : name{}, content{} {}
-
-        HttpHeader(const std::string &name, const std::string &content) : name{name}, content{content} {}
-
-        HttpHeader(std::string &&name, std::string &&content) : name{name}, content{content} {}
-    };
-
-    inline std::ostream &operator<<(std::ostream &out, const HttpHeader &header) {
-        out << (header.name.empty() ? "(empty)" : header.name) << ": "
-            << (header.content.empty() ? "(empty)" : header.content);
-        return out;
-    }
-
     [[noreturn]] inline void print_errors_and_exit(const char *message) {
         fprintf(stderr, "%s\n", message);
         ERR_print_errors_fp(stderr);
         exit(1);
     }
 
-    void send_http_request(BIO *bio, const std::string &line, const std::string &host);
-
-    std::string receive_http_message(BIO *bio, std::vector<HttpHeader> &headers_out);
-
     void send_message(BIO * bio, const messaging::MessageBlock & block);
 
     std::optional<messaging::MessageBlock> receive_message(BIO * bio);
 
     ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio);
-
-    void send_http_response(BIO *bio, const std::string &body);
 
     SSL *get_ssl(BIO* bio);
 
