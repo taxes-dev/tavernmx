@@ -36,7 +36,7 @@ namespace tavernmx::messaging {
             block.payload.resize(block.block_size);
             size_t bytes_to_copy = std::min(remaining, static_cast<size_t>(block.block_size));
             std::memcpy(block.payload.data(), header1, bytes_to_copy);
-            return sizeof(block.HEADER) + sizeof(block.block_size) + bytes_to_copy;
+            return bytes_to_copy;
         }
         else if (payload_offset < block.block_size)
         {
