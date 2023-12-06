@@ -53,13 +53,30 @@ namespace tavernmx::ssl {
         exit(1);
     }
 
-    void send_message(BIO * bio, const messaging::MessageBlock & block);
+    class ServerConnection {
+    public:
+        ServerConnection(const std::string &host_name, int32_t host_port);
 
-    std::optional<messaging::MessageBlock> receive_message(BIO * bio);
+        void load_certificate(const std::string &cert_path);
+
+        void connect();
+
+        void send_message(const messaging::MessageBlock &block);
+
+    private:
+        std::string host_name{};
+        int32_t host_port{};
+        ssl_unique_ptr<SSL_CTX> ctx{nullptr};
+        ssl_unique_ptr<BIO> bio{nullptr};
+    };
+
+    void send_message(BIO *bio, const messaging::MessageBlock &block);
+
+    std::optional<messaging::MessageBlock> receive_message(BIO *bio);
 
     ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio);
 
-    SSL *get_ssl(BIO* bio);
+    SSL *get_ssl(BIO *bio);
 
-    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string& expected_hostname);
+    void verify_the_certificate(SSL *ssl, bool allow_self_signed, const std::string &expected_hostname);
 }

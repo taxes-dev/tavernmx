@@ -43,22 +43,50 @@ namespace {
             tavernmx::ssl::print_errors_and_exit("empty BIO_read");
         }
     }
-
-    std::vector<std::string> split_headers(const std::string &text) {
-        std::vector<std::string> lines;
-        size_t pos = 0;
-        auto nlpos = text.find(NL);
-        while (nlpos != std::string::npos) {
-            lines.emplace_back(&text[pos], &text[nlpos]);
-            pos = nlpos + 2;
-            nlpos = text.find(NL, pos);
-        }
-        return lines;
-    }
-
 }
 
 namespace tavernmx::ssl {
+
+    ServerConnection::ServerConnection(const std::string &host_name, int32_t host_port)
+            : host_name{host_name}, host_port{host_port} {
+        this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_client_method()));
+        SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);
+        if (SSL_CTX_set_default_verify_paths(this->ctx.get()) != 1) {
+            print_errors_and_exit("Error loading trust store");
+        }
+    }
+
+    void ServerConnection::load_certificate(const std::string &cert_path) {
+        if (SSL_CTX_load_verify_locations(this->ctx.get(), cert_path.c_str(), nullptr) != 1) {
+            print_errors_and_exit("Error loading server cert");
+        }
+    }
+
+    void ServerConnection::connect() {
+        std::string host = this->host_name + ":" + std::to_string(this->host_port);
+        this->bio = ssl_unique_ptr<BIO>(BIO_new_connect(host.c_str()));
+        BIO_set_nbio(this->bio.get(), 1);
+        if (BIO_do_connect_retry(this->bio.get(), 3, 100) != 1) {
+            print_errors_and_exit("Error in BIO_do_connect");
+        }
+        this->bio = std::move(this->bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), 1));
+        SSL_set_tlsext_host_name(get_ssl(this->bio.get()), this->host_name.c_str());
+        SSL_set1_host(get_ssl(this->bio.get()), this->host_name.c_str());
+        //SSL_set_verify(get_ssl(ssl_bio.get()), SSL_VERIFY_NONE, nullptr);
+        handshake_retry:
+        if (BIO_do_handshake(this->bio.get()) <= 0) {
+            if (BIO_should_retry(this->bio.get())) {
+                goto handshake_retry;
+            }
+            print_errors_and_exit("Error in TLS handshake");
+        }
+        verify_the_certificate(get_ssl(this->bio.get()), false, this->host_name);
+    }
+
+    void ServerConnection::send_message(const messaging::MessageBlock &block) {
+        ssl::send_message(this->bio.get(), block);
+    }
+
     void send_message(BIO *bio, const messaging::MessageBlock &block) {
         auto block_data = messaging::pack_block(block);
         int written = BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size()));
@@ -82,8 +110,7 @@ namespace tavernmx::ssl {
             applied += messaging::apply_buffer_to_block(buffer, rcvd, block, applied);
         }
 
-        if (block.payload_size == 0)
-        {
+        if (block.payload_size == 0) {
             return {};
         }
         return block;
