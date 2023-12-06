@@ -37,7 +37,7 @@ int main() {
             auto block = receive_message(bio.get());
             if (block.has_value())
             {
-                std::cout << "Got message block: " << block->block_size << std::endl;
+                std::cout << "Got message block: " << block->payload_size << std::endl;
                 for (unsigned char c : block->payload)
                 {
                     std::cout << "Byte: " << static_cast<int32_t>(c) << std::endl;

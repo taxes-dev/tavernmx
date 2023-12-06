@@ -28,8 +28,7 @@ namespace {
         }
     }
 
-    size_t receive_bytes(BIO * bio, unsigned char * buffer, size_t bufsize)
-    {
+    size_t receive_bytes(BIO *bio, unsigned char *buffer, size_t bufsize) {
         retry:
         int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
         if (BIO_should_retry(bio)) {
@@ -70,30 +69,25 @@ namespace tavernmx::ssl {
         BIO_flush(bio);
     }
 
-    void send_message(BIO * bio, const messaging::MessageBlock & block)
-    {
+    void send_message(BIO *bio, const messaging::MessageBlock &block) {
         auto block_data = messaging::pack_block(block);
         int written = BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size()));
-        if (written < 0)
-        {
+        if (written < 0) {
             print_errors_and_exit("BIO_write failed");
         }
         BIO_flush(bio);
     }
 
-    std::optional<messaging::MessageBlock> receive_message(BIO * bio)
-    {
+    std::optional<messaging::MessageBlock> receive_message(BIO *bio) {
         unsigned char buffer[1500];
         size_t rcvd = receive_bytes(bio, buffer, sizeof(buffer));
-        if (rcvd == 0)
-        {
+        if (rcvd == 0) {
             return {};
         }
 
         messaging::MessageBlock block{};
         size_t applied = messaging::apply_buffer_to_block(buffer, rcvd, block);
-        while (applied > 0 && applied < block.block_size)
-        {
+        while (applied > 0 && applied < block.payload_size) {
             rcvd = receive_bytes(bio, buffer, sizeof(buffer));
             applied += messaging::apply_buffer_to_block(buffer, rcvd, block, applied);
         }
