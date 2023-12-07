@@ -26,7 +26,7 @@ namespace tavernmx::client
         if (BIO_do_connect_retry(this->bio.get(), 3, 100) != 1) {
             print_errors_and_exit("Error in BIO_do_connect");
         }
-        this->bio = std::move(this->bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), 1));
+        this->bio = std::move(this->bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), NEWSSL_CLIENT));
         SSL_set_tlsext_host_name(get_ssl(this->bio.get()), this->host_name.c_str());
         SSL_set1_host(get_ssl(this->bio.get()), this->host_name.c_str());
         handshake_retry:
