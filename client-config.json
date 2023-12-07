@@ -1,0 +1,6 @@
+{
+  "server_host_name": "localhost",
+  "custom_certificates": [
+    "server-certificate.pem"
+  ]
+}

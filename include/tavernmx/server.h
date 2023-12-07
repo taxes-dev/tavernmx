@@ -4,10 +4,31 @@
 
 namespace tavernmx::server
 {
+    class ServerError : public std::exception {
+    public:
+        explicit ServerError(std::string what) noexcept : what_str{std::move(what)} {};
+        explicit ServerError(const char * what) noexcept : what_str{what} {};
+        ServerError(std::string what, const std::exception &inner) noexcept : what_str{std::move(what)} { this->what_str += std::string{", caused by: "} + inner.what(); };
+        ServerError(const char * what, const std::exception &inner) noexcept : what_str{what} { this->what_str += std::string{", caused by: "} + inner.what(); }
+
+        const char * what() const noexcept { return this->what_str.c_str(); }
+    private:
+        std::string what_str{};
+    };
+
+    class ServerConfiguration
+    {
+    public:
+        explicit ServerConfiguration(const std::string& config_path);
+        int32_t host_port{};
+        std::string host_certificate_path{};
+        std::string host_private_key_path{};
+    };
+
     class ClientConnection
     {
     public:
-        ClientConnection(ssl::ssl_unique_ptr<BIO> && client_bio)
+        explicit ClientConnection(ssl::ssl_unique_ptr<BIO> && client_bio)
         : bio{std::move(client_bio)} {};
         std::optional<messaging::MessageBlock> receive_message();
     private:

@@ -1,20 +1,17 @@
 #include <iostream>
 #include <algorithm>
-#include <string>
-#include <vector>
 #include "tavernmx/client.h"
 
 using namespace tavernmx::client;
 using namespace tavernmx::messaging;
-using namespace std::string_literals;
-namespace {
-    inline const std::string HOST_NAME{"localhost"};
-    inline const int32_t HOST_PORT = 8080;
-}
 
 int main() {
-    ServerConnection connection{HOST_NAME, HOST_PORT};
-    connection.load_certificate("server-certificate.pem");
+    ClientConfiguration config{"client-config.json"};
+
+    ServerConnection connection{config.host_name, config.host_port};
+    for (auto &cert: config.custom_certificates) {
+        connection.load_certificate(cert);
+    }
     connection.connect();
 
     std::cout << "Sending request" << std::endl;

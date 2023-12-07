@@ -2,28 +2,24 @@
 #include <vector>
 #include "tavernmx/server.h"
 
-using namespace std::string_literals;
 using namespace tavernmx::server;
-using namespace tavernmx::messaging;
 
 int main() {
     signal(SIGPIPE, SIG_IGN);
 
-    ClientConnectionManager connections{8080};
-    connections.load_certificate("server-certificate.pem"s, "server-private-key.pem"s);
+    ServerConfiguration config{"server-config.json"};
+
+    ClientConnectionManager connections{config.host_port};
+    connections.load_certificate(config.host_certificate_path, config.host_private_key_path);
 
     while (auto client = connections.await_next_connection()) {
         try {
-            if (auto block = client->receive_message())
-            {
+            if (auto block = client->receive_message()) {
                 std::cout << "Got message block: " << block->payload_size << std::endl;
-                for (unsigned char c : block->payload)
-                {
+                for (unsigned char c: block->payload) {
                     std::cout << "Byte: " << static_cast<int32_t>(c) << std::endl;
                 }
-            }
-            else
-            {
+            } else {
                 std::cout << "No message block found." << std::endl;
             }
         } catch (const std::exception &ex) {

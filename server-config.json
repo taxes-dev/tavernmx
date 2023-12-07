@@ -1,0 +1,4 @@
+{
+  "host_certificate": "server-certificate.pem",
+  "host_private_key": "server-private-key.pem"
+}
