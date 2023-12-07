@@ -2,9 +2,9 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include <tavernmx/ssl.h>
+#include "tavernmx/client.h"
 
-using namespace tavernmx::ssl;
+using namespace tavernmx::client;
 using namespace tavernmx::messaging;
 using namespace std::string_literals;
 namespace {
