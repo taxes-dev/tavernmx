@@ -42,4 +42,9 @@ namespace tavernmx::client
     void ServerConnection::send_message(const messaging::MessageBlock &block) {
         ssl::send_message(this->bio.get(), block);
     }
+
+    std::optional<messaging::MessageBlock> ServerConnection::receive_message()
+    {
+        return ssl::receive_message(get_ssl(this->bio.get()), this->bio.get());
+    }
 }

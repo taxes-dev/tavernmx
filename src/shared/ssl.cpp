@@ -11,20 +11,30 @@ using namespace std::string_literals;
 namespace {
     // receive buffer size here roughly matches typical ethernet MTU
     inline const size_t BUFFER_SIZE = 1500;
+    inline const time_t WAIT_SECONDS = 3;
+    inline const uint32_t NAP_MILLISECONDS = 250;
 
-    size_t receive_bytes(BIO *bio, unsigned char *buffer, size_t bufsize) {
-        retry:
-        int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
-        if (BIO_should_retry(bio)) {
-            BIO_wait(bio, time(nullptr) + 3, 250);
-            goto retry;
-        } else if (len < 0) {
-            tavernmx::ssl::print_errors_and_exit("error in BIO_read");
-        } else if (len > 0) {
-            return static_cast<size_t>(len);
-        } else {
-            tavernmx::ssl::print_errors_and_exit("empty BIO_read");
+    size_t receive_bytes(SSL *ssl, BIO *bio, unsigned char *buffer, size_t bufsize) {
+        while((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) != SSL_RECEIVED_SHUTDOWN) {
+            int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
+            if (BIO_should_retry(bio)) {
+                BIO_wait(bio, time(nullptr) + WAIT_SECONDS, NAP_MILLISECONDS);
+                // BIO_wait pushes a timeout error onto the queue
+                ERR_clear_error();
+                continue;
+            } else if (len > 0) {
+                return static_cast<size_t>(len);
+            }
+            int32_t ssl_err = SSL_get_error(ssl, len);
+            if (ssl_err == SSL_ERROR_ZERO_RETURN)
+            {
+                break;
+            }
+            //TODO: err handling
+            std::cerr << "Error: " << ssl_err << std::endl;
+            exit(1);
         }
+        return 0;
     }
 }
 
@@ -39,9 +49,9 @@ namespace tavernmx::ssl {
         BIO_flush(bio);
     }
 
-    std::optional<messaging::MessageBlock> receive_message(BIO *bio) {
+    std::optional<messaging::MessageBlock> receive_message(SSL *ssl, BIO *bio) {
         unsigned char buffer[BUFFER_SIZE];
-        size_t rcvd = receive_bytes(bio, buffer, sizeof(buffer));
+        size_t rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
         if (rcvd == 0) {
             return {};
         }
@@ -49,7 +59,7 @@ namespace tavernmx::ssl {
         messaging::MessageBlock block{};
         size_t applied = messaging::apply_buffer_to_block(buffer, rcvd, block);
         while (applied > 0 && applied < block.payload_size) {
-            rcvd = receive_bytes(bio, buffer, sizeof(buffer));
+            rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
             applied += messaging::apply_buffer_to_block(buffer, rcvd, block, applied);
         }
 

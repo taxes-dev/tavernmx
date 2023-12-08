@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <exception>
+#include <optional>
 #include <string>
 #include <vector>
 #include "ssl.h"
@@ -35,6 +36,8 @@ namespace tavernmx::client
         void load_certificate(const std::string &cert_path);
 
         void connect();
+
+        std::optional<messaging::MessageBlock> receive_message();
 
         void send_message(const messaging::MessageBlock &block);
 

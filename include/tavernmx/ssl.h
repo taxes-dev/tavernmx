@@ -58,7 +58,7 @@ namespace tavernmx::ssl {
 
     void send_message(BIO *bio, const messaging::MessageBlock &block);
 
-    std::optional<messaging::MessageBlock> receive_message(BIO *bio);
+    std::optional<messaging::MessageBlock> receive_message(SSL *ssl, BIO *bio);
 
     ssl_unique_ptr<BIO> accept_new_tcp_connection(BIO *accept_bio);
 
