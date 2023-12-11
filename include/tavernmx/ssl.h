@@ -15,8 +15,8 @@
 #include "tavernmx/messaging.h"
 
 namespace tavernmx::ssl {
-    inline const int32_t NEWSSL_CLIENT = 1;
-    inline const int32_t NEWSSL_SERVER = 0;
+    constexpr int32_t NEWSSL_CLIENT = 1;
+    constexpr int32_t NEWSSL_SERVER = 0;
 
     template<class T>
     struct deleter_of;

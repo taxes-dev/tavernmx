@@ -31,6 +31,8 @@ namespace tavernmx::server {
         explicit ServerConfiguration(const std::string &config_path);
 
         int32_t host_port{};
+        std::string log_level{};
+        std::string log_file{};
         std::string host_certificate_path{};
         std::string host_private_key_path{};
     };
@@ -63,6 +65,8 @@ namespace tavernmx::server {
         void load_certificate(const std::string &cert_path, const std::string &private_key_path);
 
         std::optional<ClientConnection> await_next_connection();
+
+        void shutdown();
 
     private:
         int32_t accept_port{};

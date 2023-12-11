@@ -14,6 +14,8 @@ namespace tavernmx::server {
         try {
             auto config_data = json::parse(config_file);
             this->host_port = config_data.value("host_port", 8080);
+            this->log_level = config_data.value("log_level", "warn"s);
+            this->log_file = config_data.value("log_file", ""s);
             if (!config_data["host_certificate"].is_string()) {
                 throw ServerError{"host_certificate is required"};
             }

@@ -1,4 +1,6 @@
 {
+  "log_level": "info",
+  "log_file": "server.log",
   "host_certificate": "server-certificate.pem",
   "host_private_key": "server-private-key.pem"
 }
