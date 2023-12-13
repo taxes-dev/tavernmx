@@ -1,10 +1,5 @@
-//
-// Created by Taxes on 2023-12-04.
-//
-
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <vector>
 
