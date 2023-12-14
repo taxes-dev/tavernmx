@@ -22,6 +22,9 @@ int main() {
     {
         std::cout << "> ";
         std::getline(std::cin, input);
+        if (!connection.is_connected()) {
+            break;
+        }
         if (input.length() > 0) {
             block.payload_size = static_cast<int32_t>(input.length());
             block.payload.resize(input.length());
@@ -35,6 +38,9 @@ int main() {
             std::copy(std::begin(rcvd->payload), std::end(rcvd->payload), std::begin(output));
             std::cout << "Server: " << output << std::endl;
         }
+    }
+    if (!connection.is_connected()) {
+        std::cout << "Connection to server lost" << std::endl;
     }
 
     return 0;

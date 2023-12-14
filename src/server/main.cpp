@@ -9,10 +9,10 @@ using namespace tavernmx::messaging;
 using namespace tavernmx::server;
 using namespace std::string_literals;
 
-void client_worker(ClientConnection client) {
+void client_worker(std::shared_ptr<ClientConnection> && client) {
     try {
         MessageBlock response{};
-        while (auto block = client.receive_message()) {
+        while (auto block = client->receive_message()) {
             std::cout << "Got message block: " << block->payload_size << std::endl;
             std::string message{
                 reinterpret_cast<char *>(block->payload.data()), static_cast<size_t>(block->payload_size)
@@ -25,8 +25,9 @@ void client_worker(ClientConnection client) {
             response.payload_size = static_cast<int32_t>(response_text.length());
             response.payload.resize(response_text.length());
             std::copy(std::begin(response_text), std::end(response_text), std::begin(response.payload));
-            client.send_message(response);
+            client->send_message(response);
         }
+        std::cout << "Worker exiting." << std::endl;
     } catch (const std::exception& ex) {
         std::cout << "Worker exited with exception:" << std::endl;
         std::cout << ex.what() << std::endl;

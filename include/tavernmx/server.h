@@ -48,6 +48,8 @@ namespace tavernmx::server {
             : bio{std::move(client_bio)} {
         };
 
+        ~ClientConnection();
+
         ClientConnection(const ClientConnection&) = delete;
 
         ClientConnection(ClientConnection&&) = default;
@@ -55,6 +57,8 @@ namespace tavernmx::server {
         std::optional<messaging::MessageBlock> receive_message();
 
         void send_message(const messaging::MessageBlock& block);
+
+        void shutdown();
 
     private:
         ssl::ssl_unique_ptr<BIO> bio{nullptr};
@@ -68,9 +72,11 @@ namespace tavernmx::server {
 
         ClientConnectionManager(ClientConnectionManager&&) = default;
 
+        ~ClientConnectionManager();
+
         void load_certificate(const std::string& cert_path, const std::string& private_key_path);
 
-        std::optional<ClientConnection> await_next_connection();
+        std::optional<std::shared_ptr<ClientConnection>> await_next_connection();
 
         void shutdown();
 
@@ -78,5 +84,6 @@ namespace tavernmx::server {
         int32_t accept_port{};
         ssl::ssl_unique_ptr<SSL_CTX> ctx{nullptr};
         ssl::ssl_unique_ptr<BIO> accept_bio{nullptr};
+        std::vector<std::shared_ptr<ClientConnection>> active_connections{};
     };
 }
