@@ -60,7 +60,7 @@ namespace tavernmx::server {
         return connection;
     }
 
-    void ClientConnectionManager::shutdown() {
+    void ClientConnectionManager::shutdown() noexcept {
         for (auto & connection : this->active_connections) {
             connection->shutdown();
         }
@@ -84,7 +84,7 @@ namespace tavernmx::server {
         ssl::send_message(this->bio.get(), block);
     }
 
-    void ClientConnection::shutdown() {
+    void ClientConnection::shutdown() noexcept {
         if (this->bio) {
             BIO_ssl_shutdown(this->bio.get());
         }

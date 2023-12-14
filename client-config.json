@@ -1,5 +1,6 @@
 {
   "server_host_name": "localhost",
+  "log_level": "info",
   "custom_certificates": [
     "server-certificate.pem"
   ]

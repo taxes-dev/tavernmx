@@ -73,6 +73,14 @@ namespace tavernmx::client {
          */
         int32_t host_port{};
         /**
+         * @brief The maximum log level for logging ("off", "info", "warn", or "err"). Defaults to "warn".
+         */
+        std::string log_level{};
+        /**
+         * @brief If specified, a path to a writable location where logging will be written to file.
+         */
+        std::string log_file{};
+        /**
          * @brief Contains zero or more custom server certificates to recognize when connecting.
          */
         std::vector<std::string> custom_certificates{};
@@ -129,6 +137,11 @@ namespace tavernmx::client {
          * @return true if the socket is connected to the server, otherwise false
          */
         bool is_connected() const;
+
+        /**
+         * @brief Attempts to cleanly shutdown the connection.
+         */
+        void shutdown() noexcept;
 
     private:
         std::string host_name{};

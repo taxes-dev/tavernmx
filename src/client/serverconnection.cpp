@@ -30,9 +30,7 @@ namespace tavernmx::client {
     }
 
     ServerConnection::~ServerConnection() {
-        if (this->bio) {
-            BIO_ssl_shutdown(this->bio.get());
-        }
+        this->shutdown();
     }
 
 
@@ -100,4 +98,12 @@ namespace tavernmx::client {
         }
         return true;
     }
+
+    void ServerConnection::shutdown() noexcept {
+        if (this->bio) {
+            BIO_ssl_shutdown(this->bio.get());
+            this->bio.reset();
+        }
+    }
+
 }
