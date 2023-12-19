@@ -11,6 +11,10 @@ using namespace tavernmx::client;
 using namespace tavernmx::messaging;
 using namespace std::string_literals;
 
+namespace {
+    void setup_handlers(ClientUi&);
+}
+
 int main() {
     signal(SIGPIPE, SIG_IGN);
 
@@ -54,6 +58,7 @@ int main() {
 
     bool done = false;
     ClientUi ui{};
+    setup_handlers(ui);
     while (!done) {
         // Poll events
         SDL_Event event{};
@@ -164,4 +169,23 @@ int main_old() {
         TMX_WARN("Client shutdown unexpectedly.");
         return 1;
     }
+}
+
+namespace {
+
+    void connect_connectbutton(ClientUi * ui) {
+        TMX_INFO("Connect button pressed.");
+        ui->set_state(ClientUiState::Connecting);
+    }
+
+    void connecting_cancelbutton(ClientUi * ui) {
+        TMX_INFO("Cancel connecting button pressed.");
+        ui->set_state(ClientUiState::Connect);
+    }
+
+    void setup_handlers(ClientUi& ui) {
+        ui.add_handler(ClientUiMessage::Connect_ConnectButton, connect_connectbutton);
+        ui.add_handler(ClientUiMessage::Connecting_CancelButton, connecting_cancelbutton);
+    }
+
 }

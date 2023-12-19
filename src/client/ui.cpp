@@ -3,6 +3,22 @@
 #include "tavernmx/logging.h"
 
 namespace tavernmx::client {
+    void ClientUi::add_handler(ClientUiMessage message, ClientUiHandler && handler) {
+        this->handlers.insert_or_assign(message, std::move(handler));
+    }
+
+    void ClientUi::remove_handler(ClientUiMessage message) {
+        this->handlers.erase(message);
+    }
+
+    void ClientUi::call_handler(ClientUiMessage message) {
+        auto iter = this->handlers.find(message);
+        if (iter != this->handlers.end()) {
+            iter->second(this);
+        }
+    }
+
+
     void ClientUi::render() {
         // call state-specific rendering
         switch (this->state) {
@@ -65,9 +81,7 @@ namespace tavernmx::client {
         ImGui::SameLine();
         ImGui::Text("server.tld:8080");
         if (ImGui::Button("Connect")) {
-            // TODO: move to external handler
-            TMX_INFO("Connect button pressed.");
-            this->set_state(ClientUiState::Connecting);
+            this->call_handler(ClientUiMessage::Connect_ConnectButton);
         }
         ImGui::End();
     }
@@ -80,9 +94,7 @@ namespace tavernmx::client {
                      ImGuiWindowFlags_NoTitleBar);
         ImGui::Text("Connecting ...");
         if (ImGui::Button("Cancel")) {
-            // TODO: move to external handler
-            TMX_INFO("Cancel connecting button pressed.");
-            this->set_state(ClientUiState::Connect);
+            this->call_handler(ClientUiMessage::Connecting_CancelButton);
         }
         ImGui::End();
     }
