@@ -1,9 +1,12 @@
 #include <imgui.h>
+#include <imgui_stdlib.h>
 #include "tavernmx/client-ui.h"
 #include "tavernmx/logging.h"
 
+using namespace std::string_literals;
+
 namespace tavernmx::client {
-    void ClientUi::add_handler(ClientUiMessage message, ClientUiHandler && handler) {
+    void ClientUi::add_handler(ClientUiMessage message, ClientUiHandler&& handler) {
         this->handlers.insert_or_assign(message, std::move(handler));
     }
 
@@ -32,6 +35,10 @@ namespace tavernmx::client {
             default:
                 assert((false, "Unhandled UI state"));
                 break;
+        }
+        // check for any errors to display
+        if (!this->current_error.empty()) {
+            this->render_error();
         }
         // reset viewport flag
         this->viewport_resized = false;
@@ -73,13 +80,32 @@ namespace tavernmx::client {
     }
 
     void ClientUi::render_connect() {
+        auto& state_bag = (*this)[ClientUiState::Connect];
+        if (!state_bag.contains("host")) {
+            state_bag["host"] = ""s;
+        }
+        if (!state_bag.contains("port")) {
+            state_bag["port"] = "8080"s;
+        }
+
         this->window_size(0.33f);
         this->window_center();
         ImGui::Begin("Connect to server ...", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-        ImGui::Text("Connect to:");
+        ImGui::Text("Host:");
         ImGui::SameLine();
-        ImGui::Text("server.tld:8080");
+        if (ImGui::InputText("##host", &state_bag["host"], ImGuiInputTextFlags_EnterReturnsTrue, nullptr,
+                             nullptr)) {
+            this->call_handler(ClientUiMessage::Connect_ConnectButton);
+        }
+        ImGui::Text("Port:");
+        ImGui::SameLine();
+        if (ImGui::InputText("##port", &state_bag["port"],
+                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal, nullptr,
+                             nullptr)) {
+            this->call_handler(ClientUiMessage::Connect_ConnectButton);
+        }
+
         if (ImGui::Button("Connect")) {
             this->call_handler(ClientUiMessage::Connect_ConnectButton);
         }
@@ -95,6 +121,19 @@ namespace tavernmx::client {
         ImGui::Text("Connecting ...");
         if (ImGui::Button("Cancel")) {
             this->call_handler(ClientUiMessage::Connecting_CancelButton);
+        }
+        ImGui::End();
+    }
+
+    void ClientUi::render_error() {
+        this->window_size(0.25f);
+        const ImVec2 viewport = ImGui::GetMainViewport()->Size;
+        ImGui::SetNextWindowPos(ImVec2{20.0f, viewport.y - 20.0f}, ImGuiCond_Appearing, ImVec2{0.0f, 1.0f});
+        ImGui::Begin("Error!", nullptr,
+                     ImGuiWindowFlags_NoCollapse);
+        ImGui::Text(this->current_error.c_str());
+        if (ImGui::Button("OK")) {
+            this->current_error.clear();
         }
         ImGui::End();
     }

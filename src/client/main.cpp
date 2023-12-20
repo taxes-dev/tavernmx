@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
@@ -16,91 +17,138 @@ namespace {
 }
 
 int main() {
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+    std::unique_ptr<ServerConnection> connection{nullptr};
+
+    static auto sigint_handler = [&connection]() {
+        TMX_WARN("Interrupt received.");
+        if (connection) {
+            connection->shutdown();
+        }
+    };
+    signal(SIGINT, [](int32_t) { sigint_handler(); });
     signal(SIGPIPE, SIG_IGN);
 
-    ClientConfiguration config{"client-config.json"};
+    try {
+        ClientConfiguration config{"client-config.json"};
 
-    spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
-    std::optional<std::string> log_file{};
-    if (!config.log_file.empty()) {
-        log_file = config.log_file;
-    }
-    tavernmx::configure_logging(log_level, log_file);
-    TMX_INFO("Client starting.");
-
-    // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-        std::cerr << "Error: " << SDL_GetError() << std::endl;
-        return 1;
-    }
-    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-
-    // Create window with SDL_Renderer graphics context
-    SDL_Window* window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
-    if (renderer == nullptr) {
-        std::cerr << "Error creating SDL_Renderer!" << std::endl;
-        return 1;
-    }
-    SDL_RendererInfo info{};
-    SDL_GetRendererInfo(renderer, &info);
-    std::cout << "Current SDL_Renderer: " << info.name << std::endl;
-
-    // Create ImGUI context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer2_Init(renderer);
-
-    bool done = false;
-    ClientUi ui{};
-    setup_handlers(ui);
-    while (!done) {
-        // Poll events
-        SDL_Event event{};
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            switch (event.type) {
-                case SDL_QUIT:
-                    done = true;
-                    break;
-                case SDL_WINDOWEVENT:
-                    if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-                        done = true;
-                    }
-                    if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                        ui.set_viewport_resized();
-                    }
-                    break;
-            }
+        spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
+        std::optional<std::string> log_file{};
+        if (!config.log_file.empty()) {
+            log_file = config.log_file;
         }
+        tavernmx::configure_logging(log_level, log_file);
+        TMX_INFO("Client starting.");
 
-        // Start ImGui frame
-        ImGui_ImplSDLRenderer2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+        // Setup SDL
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+            TMX_ERR("Error: {}", SDL_GetError());
+            return 1;
+        }
+        SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 
-        // Define ImGui controls
-        bool show_demo_window = true;
-        ImGui::ShowDemoWindow(&show_demo_window);
+        // Create window with SDL_Renderer graphics context
+        window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                  1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+        if (renderer == nullptr) {
+            TMX_ERR("Error creating SDL_Renderer!");
+            return 1;
+        }
+        SDL_RendererInfo info{};
+        SDL_GetRendererInfo(renderer, &info);
+        TMX_INFO("Current SDL_Renderer: {}", info.name);
 
-        ui.render();
+        // Create ImGUI context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        ImGui::StyleColorsDark();
+        ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+        ImGui_ImplSDLRenderer2_Init(renderer);
 
-        // Render and present
-        ImGui::Render();
-        SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
-        SDL_RenderClear(renderer);
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
-        SDL_RenderPresent(renderer);
+        // setup UI handlers
+        bool done = false;
+        ClientUi ui{};
+        setup_handlers(ui);
+
+        // insert initial state
+        ui[ClientUiState::Connect]["host"] = config.host_name;
+        ui[ClientUiState::Connect]["port"] = std::to_string(config.host_port);
+
+        // Main loop
+        while (!done) {
+            // Poll events
+            SDL_Event event{};
+            while (SDL_PollEvent(&event)) {
+                ImGui_ImplSDL2_ProcessEvent(&event);
+                switch (event.type) {
+                    case SDL_QUIT:
+                        done = true;
+                        break;
+                    case SDL_WINDOWEVENT:
+                        if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                            done = true;
+                        }
+                        if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                            ui.set_viewport_resized();
+                        }
+                        break;
+                }
+            }
+
+            // Handle current UI state
+            if (ui.get_state() == ClientUiState::Connecting && !connection) {
+                try {
+                    std::string host_name = ui[ClientUiState::Connect]["host"];
+                    int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"]);
+                    TMX_INFO("Connecting to {}:{} ...", host_name, host_port);
+                    connection = std::make_unique<ServerConnection>(host_name, host_port);
+                    for (auto& cert: config.custom_certificates) {
+                        connection->load_certificate(cert);
+                    }
+                    connection->connect();
+                } catch (std::exception& ex) {
+                    ui.set_state(ClientUiState::Connect);
+                    connection.reset();
+                    ui.set_error(std::string{ex.what()});
+                }
+            }
+
+            // Start ImGui frame
+            ImGui_ImplSDLRenderer2_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
+
+            // Define ImGui controls
+            bool show_demo_window = true;
+            ImGui::ShowDemoWindow(&show_demo_window);
+
+            ui.render();
+
+            // Render and present
+            ImGui::Render();
+            SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+            SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+            SDL_RenderClear(renderer);
+            ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+            SDL_RenderPresent(renderer);
+        }
+    } catch (std::exception& ex) {
+        TMX_ERR("Unhandled exception: {}", ex.what());
+        TMX_WARN("Client shutdown unexpectedly.");
+        return 1;
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    // Shutdown
+    if (renderer) {
+        SDL_DestroyRenderer(renderer);
+    }
+    if (window) {
+        SDL_DestroyWindow(window);
+    }
     SDL_Quit();
 
     return 0;
@@ -172,13 +220,12 @@ int main_old() {
 }
 
 namespace {
-
-    void connect_connectbutton(ClientUi * ui) {
+    void connect_connectbutton(ClientUi* ui) {
         TMX_INFO("Connect button pressed.");
         ui->set_state(ClientUiState::Connecting);
     }
 
-    void connecting_cancelbutton(ClientUi * ui) {
+    void connecting_cancelbutton(ClientUi* ui) {
         TMX_INFO("Cancel connecting button pressed.");
         ui->set_state(ClientUiState::Connect);
     }
@@ -187,5 +234,4 @@ namespace {
         ui.add_handler(ClientUiMessage::Connect_ConnectButton, connect_connectbutton);
         ui.add_handler(ClientUiMessage::Connecting_CancelButton, connecting_cancelbutton);
     }
-
 }
