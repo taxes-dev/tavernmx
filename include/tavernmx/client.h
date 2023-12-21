@@ -119,6 +119,12 @@ namespace tavernmx::client {
         void connect();
 
         /**
+         * @brief Get the connection host name.
+         * @return std::string
+         */
+        std::string get_host_name() const { return this->host_name; }
+
+        /**
          * @brief Attempts to read a message from the server, if one is waiting.
          * @return a tavernmx::messaging::MessageBlock if a well-formed message block was read, otherwise empty
          * @throws ClientError if a network error occurs

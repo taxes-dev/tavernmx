@@ -5,7 +5,8 @@
 namespace tavernmx::client {
     enum class ClientUiState {
         Connect,
-        Connecting
+        Connecting,
+        ChatWindow
     };
 
     enum class ClientUiMessage : int32_t {
@@ -64,6 +65,8 @@ namespace tavernmx::client {
         void render_connect();
 
         void render_connecting();
+
+        void render_chat_window();
 
         void render_error();
     };

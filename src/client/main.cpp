@@ -1,5 +1,8 @@
+#include <csignal>
 #include <iostream>
 #include <memory>
+#include <semaphore>
+#include <thread>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
@@ -13,6 +16,8 @@ using namespace tavernmx::messaging;
 using namespace std::string_literals;
 
 namespace {
+    std::binary_semaphore thread_signal{0};
+
     void setup_handlers(ClientUi&);
 }
 
@@ -27,8 +32,8 @@ int main() {
             connection->shutdown();
         }
     };
-    signal(SIGINT, [](int32_t) { sigint_handler(); });
-    signal(SIGPIPE, SIG_IGN);
+    std::signal(SIGINT, [](int32_t) { sigint_handler(); });
+    std::signal(SIGPIPE, SIG_IGN);
 
     try {
         ClientConfiguration config{"client-config.json"};
@@ -100,7 +105,11 @@ int main() {
             }
 
             // Handle current UI state
-            if (ui.get_state() == ClientUiState::Connecting && !connection) {
+            if (ui.get_state() == ClientUiState::Connect && connection) {
+                // Drop current connection if it exists
+                connection.reset();
+            } else if (ui.get_state() == ClientUiState::Connecting && !connection) {
+                // Start trying to connect
                 try {
                     std::string host_name = ui[ClientUiState::Connect]["host"];
                     int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"]);
@@ -109,11 +118,39 @@ int main() {
                     for (auto& cert: config.custom_certificates) {
                         connection->load_certificate(cert);
                     }
-                    connection->connect();
+                    // Connect on background thread so it doesn't block UI
+                    std::thread connection_thread{
+                        [&connection]() {
+                            try {
+                                connection->connect();
+                                thread_signal.release();
+                            } catch (std::exception& ex) {
+                                TMX_ERR("connection_thread error: {}", ex.what());
+                                thread_signal.release();
+                            }
+                        }
+                    };
+                    connection_thread.detach();
                 } catch (std::exception& ex) {
                     ui.set_state(ClientUiState::Connect);
                     connection.reset();
                     ui.set_error(std::string{ex.what()});
+                }
+            } else if (ui.get_state() == ClientUiState::Connecting) {
+                // Poll to see if connection attempt is resolved
+                if (thread_signal.try_acquire()) {
+                    if (!ui[ClientUiState::Connecting]["cancelled"].empty()) {
+                        connection.reset();
+                        ui.set_error("Connection cancelled."s);
+                        ui.set_state(ClientUiState::Connect);
+                    } else if (connection->is_connected()) {
+                        ui[ClientUiState::ChatWindow]["host"] = connection->get_host_name();
+                        ui.set_state(ClientUiState::ChatWindow);
+                    } else {
+                        connection.reset();
+                        ui.set_error("Unable to connect to server."s);
+                        ui.set_state(ClientUiState::Connect);
+                    }
                 }
             }
 
@@ -154,80 +191,16 @@ int main() {
     return 0;
 }
 
-int main_old() {
-    try {
-        signal(SIGPIPE, SIG_IGN);
-
-        ClientConfiguration config{"client-config.json"};
-
-        spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
-        std::optional<std::string> log_file{};
-        if (!config.log_file.empty()) {
-            log_file = config.log_file;
-        }
-        tavernmx::configure_logging(log_level, log_file);
-        TMX_INFO("Client starting.");
-
-        TMX_INFO("Connecting to {}:{} ...", config.host_name, config.host_port);
-        ServerConnection connection{config.host_name, config.host_port};
-        for (auto& cert: config.custom_certificates) {
-            connection.load_certificate(cert);
-        }
-        connection.connect();
-        static auto sigint_handler = [&connection]() {
-            TMX_WARN("Interrupt received.");
-            connection.shutdown();
-        };
-        signal(SIGINT, [](int32_t) { sigint_handler(); });
-
-        TMX_INFO("Beginning chat loop.");
-        std::string input{};
-        std::string output{};
-        MessageBlock block{};
-        while (input != "/quit"s) {
-            std::cout << "> ";
-            std::getline(std::cin, input);
-            if (!connection.is_connected()) {
-                break;
-            }
-            if (input.length() > 0) {
-                block.payload_size = static_cast<int32_t>(input.length());
-                if (block.payload.size() < input.length()) {
-                    block.payload.resize(input.length());
-                }
-                std::copy(std::begin(input), std::end(input), std::begin(block.payload));
-                connection.send_message(block);
-            }
-            auto rcvd = connection.receive_message();
-            if (rcvd.has_value()) {
-                output.resize(rcvd->payload_size);
-                std::copy(std::begin(rcvd->payload), std::end(rcvd->payload), std::begin(output));
-                std::cout << "Server: " << output << std::endl;
-            }
-        }
-        if (!connection.is_connected()) {
-            std::cout << "Connection to server lost" << std::endl;
-        }
-
-        TMX_INFO("Client shutdown.");
-
-        return 0;
-    } catch (std::exception& ex) {
-        TMX_ERR("Unhandled exception: {}", ex.what());
-        TMX_WARN("Client shutdown unexpectedly.");
-        return 1;
-    }
-}
-
 namespace {
     void connect_connectbutton(ClientUi* ui) {
         TMX_INFO("Connect button pressed.");
         ui->set_state(ClientUiState::Connecting);
+        (*ui)[ClientUiState::Connecting]["cancelled"] = ""s;
     }
 
     void connecting_cancelbutton(ClientUi* ui) {
         TMX_INFO("Cancel connecting button pressed.");
-        ui->set_state(ClientUiState::Connect);
+        (*ui)[ClientUiState::Connecting]["cancelled"] = "1"s;
     }
 
     void setup_handlers(ClientUi& ui) {

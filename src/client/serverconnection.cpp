@@ -93,8 +93,8 @@ namespace tavernmx::client {
             if ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) == SSL_RECEIVED_SHUTDOWN) {
                 return false;
             }
-        } catch (SslError& ex) {
-            throw ClientError{"get_ssl failed", ex};
+        } catch (SslError&) {
+            return false;
         }
         return true;
     }
