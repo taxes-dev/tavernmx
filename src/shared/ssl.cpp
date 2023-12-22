@@ -45,10 +45,11 @@ namespace {
         while((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) != SSL_RECEIVED_SHUTDOWN) {
             const int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
             if (BIO_should_retry(bio)) {
+                // TODO: reconcile max_time here with wait_for impl in server/client connections
                 BIO_wait(bio, time(nullptr) + WAIT_SECONDS, NAP_MILLISECONDS);
                 // BIO_wait pushes a timeout error onto the queue
                 ERR_clear_error();
-                continue;
+                break;
             } else if (len > 0) {
                 return static_cast<size_t>(len);
             }

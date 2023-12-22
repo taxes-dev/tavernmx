@@ -135,6 +135,17 @@ namespace tavernmx::server {
          */
         void shutdown() noexcept;
 
+        /**
+         * @brief Blocks, waiting for a message of type \p message_type.
+         * @param message_type tavernmx::messaging::MessageType expected
+         * @param milliseconds maximum number of milliseconds to wait, default is 250ms
+         * @return a tavernmx::messaging::Message if a well-formed message of type
+         * \p message_type is received, otherwise empty
+         * @note This is used when a certain specific message is expected from the client. Note
+         * that any other messages received while waiting will be discarded.
+         */
+        std::optional<messaging::Message> wait_for(messaging::MessageType message_type, time_t milliseconds = 250);
+
     private:
         ssl::ssl_unique_ptr<BIO> bio{nullptr};
     };

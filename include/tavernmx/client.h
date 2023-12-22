@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstddef>
+#include <concepts>
 #include <exception>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
@@ -139,6 +140,21 @@ namespace tavernmx::client {
         void send_message(const messaging::MessageBlock& block);
 
         /**
+         * @brief Attempts to send zero or more messages to the server.
+         * @param start start of range pointing to MessageBlock& values
+         * @param end end of range pointing to MessageBlock& values
+         * @throws ClientError if a network error occurs
+         */
+        template<class Iterator>
+            requires std::forward_iterator<Iterator> && std::same_as<typename Iterator::reference,
+                         messaging::MessageBlock &>
+        void send_messages(Iterator start, Iterator end) {
+            for (auto it = start; it < end; ++it) {
+                this->send_message(*it);
+            }
+        };
+
+        /**
          * @brief Tests if the connection to the server is active.
          * @return true if the socket is connected to the server, otherwise false
          */
@@ -148,6 +164,17 @@ namespace tavernmx::client {
          * @brief Attempts to cleanly shutdown the connection.
          */
         void shutdown() noexcept;
+
+        /**
+         * @brief Blocks, waiting for a message of type \p message_type.
+         * @param message_type tavernmx::messaging::MessageType expected
+         * @param milliseconds maximum number of milliseconds to wait, default is 250ms
+         * @return a tavernmx::messaging::Message if a well-formed message of type
+         * \p message_type is received, otherwise empty
+         * @note This is used when a certain specific message is expected from the client. Note
+         * that any other messages received while waiting will be discarded.
+         */
+        std::optional<messaging::Message> wait_for(messaging::MessageType message_type, time_t milliseconds = 250);
 
     private:
         std::string host_name{};

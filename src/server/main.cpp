@@ -9,8 +9,21 @@ using namespace tavernmx::messaging;
 using namespace tavernmx::server;
 using namespace std::string_literals;
 
-void client_worker(std::shared_ptr<ClientConnection> && client) {
+void client_worker(std::shared_ptr<ClientConnection>&& client) {
     try {
+        // Expect client to send HELLO as the first message
+        auto hello = client->wait_for(MessageType::HELLO);
+        if (hello) {
+            std::cout << "Client connected: " << std::get<std::string>(hello.value().values["user_name"s]) << std::endl;
+            // TODO: simplify message creation/packing
+            auto ack = pack_messages({create_ack()});
+            client->send_message(ack[0]);
+        } else {
+            std::cout << "No HELLO sent by client, disconnecting" << std::endl;
+            return;
+        }
+
+        // Echo responses
         MessageBlock response{};
         while (auto block = client->receive_message()) {
             std::cout << "Got message block: " << block->payload_size << std::endl;
@@ -64,8 +77,7 @@ int main() {
         }
         TMX_INFO("Server shutdown.");
         return 0;
-    }
-    catch (std::exception& ex) {
+    } catch (std::exception& ex) {
         TMX_ERR("Unhandled exception: {}", ex.what());
         TMX_WARN("Server shutdown unexpectedly.");
         return 1;

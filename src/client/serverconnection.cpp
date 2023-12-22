@@ -1,4 +1,6 @@
+#include <chrono>
 #include "tavernmx/client.h"
+#include "tavernmx/logging.h"
 
 using namespace tavernmx::ssl;
 
@@ -105,5 +107,28 @@ namespace tavernmx::client {
             this->bio.reset();
         }
     }
+
+    std::optional<messaging::Message> ServerConnection::wait_for(messaging::MessageType message_type,
+                                                                 time_t milliseconds) {
+        const auto start = std::chrono::high_resolution_clock::now();
+        time_t elapsed = 0;
+
+        while (elapsed < milliseconds) {
+            if (auto message_block = this->receive_message()) {
+                auto messages = unpack_messages(message_block.value());
+                for (auto& message: messages) {
+                    if (message.message_type == message_type) {
+                        return message;
+                    }
+                }
+            }
+
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now() - start).count();
+        }
+
+        return {};
+    }
+
 
 }

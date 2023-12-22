@@ -16,6 +16,9 @@ using namespace tavernmx::messaging;
 using namespace std::string_literals;
 
 namespace {
+    constexpr int32_t WIN_WIDTH = 1280;
+    constexpr int32_t WIN_HEIGHT = 720;
+
     std::binary_semaphore thread_signal{0};
 
     void setup_handlers(ClientUi&);
@@ -48,17 +51,20 @@ int main() {
 
         // Setup SDL
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-            TMX_ERR("Error: {}", SDL_GetError());
+            TMX_ERR("SDL Error: {}", SDL_GetError());
             return 1;
         }
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 
         // Create window with SDL_Renderer graphics context
         window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                  1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+                                  WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        if (window == nullptr) {
+            TMX_ERR("SDL Error creating SDL_Window: {}", SDL_GetError());
+        }
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
         if (renderer == nullptr) {
-            TMX_ERR("Error creating SDL_Renderer!");
+            TMX_ERR("SDL Error creating SDL_Renderer: {}", SDL_GetError());
             return 1;
         }
         SDL_RendererInfo info{};
@@ -123,6 +129,16 @@ int main() {
                         [&connection]() {
                             try {
                                 connection->connect();
+
+                                Message msg = create_hello("test"s);
+                                auto msgs = pack_messages({msg});
+                                connection->send_messages(std::begin(msgs), std::end(msgs));
+
+                                if (!connection->wait_for(MessageType::ACK)) {
+                                    TMX_ERR("Server did not acknowledge HELLO");
+                                    connection->shutdown();
+                                }
+
                                 thread_signal.release();
                             } catch (std::exception& ex) {
                                 TMX_ERR("connection_thread error: {}", ex.what());
