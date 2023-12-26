@@ -22,6 +22,11 @@ namespace {
     std::binary_semaphore thread_signal{0};
 
     void setup_handlers(ClientUi&);
+
+    std::string generate_random_username() {
+        const uint32_t numbers = time(nullptr) & 0xfff;
+        return "jdoe"s + std::to_string(numbers);
+    };
 }
 
 int main() {
@@ -29,13 +34,6 @@ int main() {
     SDL_Renderer* renderer = nullptr;
     std::unique_ptr<ServerConnection> connection{nullptr};
 
-    static auto sigint_handler = [&connection]() {
-        TMX_WARN("Interrupt received.");
-        if (connection) {
-            connection->shutdown();
-        }
-    };
-    std::signal(SIGINT, [](int32_t) { sigint_handler(); });
     std::signal(SIGPIPE, SIG_IGN);
 
     try {
@@ -86,6 +84,7 @@ int main() {
         setup_handlers(ui);
 
         // insert initial state
+        ui[ClientUiState::Connect]["user"] = generate_random_username();
         ui[ClientUiState::Connect]["host"] = config.host_name;
         ui[ClientUiState::Connect]["port"] = std::to_string(config.host_port);
 
@@ -117,6 +116,7 @@ int main() {
             } else if (ui.get_state() == ClientUiState::Connecting && !connection) {
                 // Start trying to connect
                 try {
+                    std::string user_name = ui[ClientUiState::Connect]["user"];
                     std::string host_name = ui[ClientUiState::Connect]["host"];
                     int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"]);
                     TMX_INFO("Connecting to {}:{} ...", host_name, host_port);
@@ -126,11 +126,11 @@ int main() {
                     }
                     // Connect on background thread so it doesn't block UI
                     std::thread connection_thread{
-                        [&connection]() {
+                        [&connection, &user_name]() {
                             try {
                                 connection->connect();
 
-                                Message msg = create_hello("test"s);
+                                Message msg = create_hello(user_name);
                                 auto msgs = pack_messages({msg});
                                 connection->send_messages(std::begin(msgs), std::end(msgs));
 

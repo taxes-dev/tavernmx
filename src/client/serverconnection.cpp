@@ -87,18 +87,7 @@ namespace tavernmx::client {
     }
 
     bool ServerConnection::is_connected() const {
-        if (this->bio == nullptr) {
-            return false;
-        }
-        try {
-            SSL* ssl = get_ssl(this->bio.get());
-            if ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) == SSL_RECEIVED_SHUTDOWN) {
-                return false;
-            }
-        } catch (SslError&) {
-            return false;
-        }
-        return true;
+        return ssl::is_connected(this->bio.get());
     }
 
     void ServerConnection::shutdown() noexcept {
@@ -109,9 +98,9 @@ namespace tavernmx::client {
     }
 
     std::optional<messaging::Message> ServerConnection::wait_for(messaging::MessageType message_type,
-                                                                 time_t milliseconds) {
+                                                                 Milliseconds milliseconds) {
         const auto start = std::chrono::high_resolution_clock::now();
-        time_t elapsed = 0;
+        Milliseconds elapsed = 0;
 
         while (elapsed < milliseconds) {
             if (auto message_block = this->receive_message()) {

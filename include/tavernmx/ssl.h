@@ -13,6 +13,12 @@ namespace tavernmx::ssl {
     constexpr long NEWSSL_CLIENT = 1;
     /// Used by BIO_new_ssl() to indicate a server socket
     constexpr long NEWSSL_SERVER = 0;
+    /// Matches the type of std::chrono::milliseconds, min 45 bits
+    using Milliseconds = long long;
+    /// Number of milliseconds to wait between SSL polls
+    constexpr Milliseconds SSL_NAP_MILLISECONDS = 250;
+    /// Number of milliseconds to wait between SSL retries
+    constexpr Milliseconds SSL_RETRY_MILLISECONDS = 1000;
 
     /**
      * @brief Base template for openssl deleters.
@@ -142,4 +148,6 @@ namespace tavernmx::ssl {
      * @throws SslError if the certificate does not pass validation
      */
     void verify_certificate(SSL* ssl, bool allow_self_signed, const std::string& expected_hostname);
+
+    bool is_connected(BIO* bio);
 }

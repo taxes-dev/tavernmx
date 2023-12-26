@@ -56,6 +56,8 @@ namespace tavernmx::server {
         bio = std::move(bio)
               | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), NEWSSL_SERVER));
 
+        this->cleanup_connections();
+
         auto connection = std::make_shared<ClientConnection>(std::move(bio));
         this->active_connections.push_back(connection);
         return connection;
@@ -73,9 +75,20 @@ namespace tavernmx::server {
         }
     }
 
+    void ClientConnectionManager::cleanup_connections() {
+        std::erase_if(this->active_connections, [](const std::shared_ptr<ClientConnection>& connection) {
+            return !connection->is_connected();
+        });
+    }
+
     ClientConnection::~ClientConnection() {
         this->shutdown();
     }
+
+    bool ClientConnection::is_connected() {
+        return ssl::is_connected(this->bio.get());
+    }
+
 
     std::optional<messaging::MessageBlock> ClientConnection::receive_message() {
         return ssl::receive_message(this->bio.get());
@@ -92,9 +105,9 @@ namespace tavernmx::server {
     }
 
     std::optional<messaging::Message> ClientConnection::wait_for(messaging::MessageType message_type,
-                                                                 time_t milliseconds) {
+                                                                 Milliseconds milliseconds) {
         auto start = std::chrono::high_resolution_clock::now();
-        time_t elapsed = 0;
+        Milliseconds elapsed = 0;
 
         while (elapsed < milliseconds) {
             if (auto message_block = this->receive_message()) {

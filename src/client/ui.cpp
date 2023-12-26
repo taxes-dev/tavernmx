@@ -86,6 +86,9 @@ namespace tavernmx::client {
 
     void ClientUi::render_connect() {
         auto& state_bag = (*this)[ClientUiState::Connect];
+        if (!state_bag.contains("user")) {
+            state_bag["user"] = ""s;
+        }
         if (!state_bag.contains("host")) {
             state_bag["host"] = ""s;
         }
@@ -97,17 +100,20 @@ namespace tavernmx::client {
         this->window_center();
         ImGui::Begin("Connect to server ...", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Text("User name:");
+        ImGui::SameLine();
+        if (ImGui::InputText("##user", &state_bag["user"], ImGuiInputTextFlags_EnterReturnsTrue)) {
+            this->call_handler(ClientUiMessage::Connect_ConnectButton);
+        }
         ImGui::Text("Host:");
         ImGui::SameLine();
-        if (ImGui::InputText("##host", &state_bag["host"], ImGuiInputTextFlags_EnterReturnsTrue, nullptr,
-                             nullptr)) {
+        if (ImGui::InputText("##host", &state_bag["host"], ImGuiInputTextFlags_EnterReturnsTrue)) {
             this->call_handler(ClientUiMessage::Connect_ConnectButton);
         }
         ImGui::Text("Port:");
         ImGui::SameLine();
         if (ImGui::InputText("##port", &state_bag["port"],
-                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal, nullptr,
-                             nullptr)) {
+                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
             this->call_handler(ClientUiMessage::Connect_ConnectButton);
         }
 

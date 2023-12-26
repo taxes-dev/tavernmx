@@ -117,6 +117,12 @@ namespace tavernmx::server {
         ClientConnection& operator=(ClientConnection&&) = default;
 
         /**
+        * @brief Tests if the connection to the client is active.
+        * @return true if the socket is connected to the client, otherwise false
+        */
+        bool is_connected();
+
+        /**
         * @brief Attempts to read a message from the client, if one is waiting.
         * @return a tavernmx::messaging::MessageBlock if a well-formed message block was read, otherwise empty
         * @throws ServerError if a network error occurs
@@ -138,13 +144,15 @@ namespace tavernmx::server {
         /**
          * @brief Blocks, waiting for a message of type \p message_type.
          * @param message_type tavernmx::messaging::MessageType expected
-         * @param milliseconds maximum number of milliseconds to wait, default is 250ms
+         * @param milliseconds maximum number of milliseconds to wait, default is twice the value of
+         * tavernmx::ssl::SSL_RETRY_MILLISECONDS
          * @return a tavernmx::messaging::Message if a well-formed message of type
          * \p message_type is received, otherwise empty
          * @note This is used when a certain specific message is expected from the client. Note
          * that any other messages received while waiting will be discarded.
          */
-        std::optional<messaging::Message> wait_for(messaging::MessageType message_type, time_t milliseconds = 250);
+        std::optional<messaging::Message> wait_for(messaging::MessageType message_type,
+                                                   ssl::Milliseconds milliseconds = ssl::SSL_RETRY_MILLISECONDS * 2);
 
     private:
         ssl::ssl_unique_ptr<BIO> bio{nullptr};
@@ -202,5 +210,10 @@ namespace tavernmx::server {
         ssl::ssl_unique_ptr<SSL_CTX> ctx{nullptr};
         ssl::ssl_unique_ptr<BIO> accept_bio{nullptr};
         std::vector<std::shared_ptr<ClientConnection>> active_connections{};
+
+        /**
+         * @brief Removes client connections that are no longer active.
+         */
+        void cleanup_connections();
     };
 }

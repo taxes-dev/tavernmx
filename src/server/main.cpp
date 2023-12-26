@@ -24,21 +24,23 @@ void client_worker(std::shared_ptr<ClientConnection>&& client) {
         }
 
         // Echo responses
-        MessageBlock response{};
-        while (auto block = client->receive_message()) {
-            std::cout << "Got message block: " << block->payload_size << std::endl;
-            std::string message{
-                reinterpret_cast<char *>(block->payload.data()), static_cast<size_t>(block->payload_size)
-            };
-            std::cout << "Line: " << message << std::endl;
+        while (client->is_connected()) {
+            if (auto block = client->receive_message()) {
+                MessageBlock response{};
+                std::cout << "Got message block: " << block->payload_size << std::endl;
+                std::string message{
+                    reinterpret_cast<char *>(block->payload.data()), static_cast<size_t>(block->payload_size)
+                };
+                std::cout << "Line: " << message << std::endl;
 
-            std::string response_text{"You sent "};
-            response_text += std::to_string(message.length());
-            response_text += " characters";
-            response.payload_size = static_cast<int32_t>(response_text.length());
-            response.payload.resize(response_text.length());
-            std::copy(std::begin(response_text), std::end(response_text), std::begin(response.payload));
-            client->send_message(response);
+                std::string response_text{"You sent "};
+                response_text += std::to_string(message.length());
+                response_text += " characters";
+                response.payload_size = static_cast<int32_t>(response_text.length());
+                response.payload.resize(response_text.length());
+                std::copy(std::begin(response_text), std::end(response_text), std::begin(response.payload));
+                client->send_message(response);
+            }
         }
         std::cout << "Worker exiting." << std::endl;
     } catch (const std::exception& ex) {
