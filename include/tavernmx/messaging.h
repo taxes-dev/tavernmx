@@ -1,36 +1,40 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
 
 namespace tavernmx::messaging {
+    /// Data type for transport characters
+    using CharType = unsigned char;
+
     /**
      * @brief Structure for sending messages over the network.
      */
     struct MessageBlock {
         /// Header, for locating the start of a MessageBlock.
-        const unsigned char HEADER[4] = {'t', 'm', 'x', 0x02};
+        const CharType HEADER[4] = {'t', 'm', 'x', 0x02};
         /// Size in bytes of payload.
-        int32_t payload_size = 0;
+        uint32_t payload_size = 0;
         /// Payload data.
-        std::vector<uint8_t> payload{};
+        std::vector<CharType> payload{};
     };
 
     /**
      * @brief Specific messages understood by client and server.
      */
     enum class MessageType : int32_t {
-        Invalid         = 0,
+        Invalid = 0,
 
         // Basic messages
-        ACK             = 0x1000,
-        NAK             = 0x1001,
+        ACK = 0x1000,
+        NAK = 0x1001,
 
         // Connection-related messages
-        HELLO           = 0x2000,
+        HELLO = 0x2000,
     };
 
     /**
@@ -48,7 +52,6 @@ namespace tavernmx::messaging {
     /**
      * @brief Takes an arbitrary set of bytes and attempts to construct a MessageBlock from it.
      * @param buffer The bytes of data to parse.
-     * @param bufsize Size of \p buffer.
      * @param block A MessageBlock struct to insert data into.
      * @param payload_offset See notes.
      * @return The number of bytes of payload actually inserted into \p block. See notes.
@@ -59,35 +62,35 @@ namespace tavernmx::messaging {
      * i.e. the sum of the return values is equal to payload_size, or the return value is 0 (no bytes processed).
      */
     size_t
-    apply_buffer_to_block(const unsigned char *buffer, size_t bufsize, MessageBlock &block, size_t payload_offset = 0);
+    apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset = 0);
 
     /**
      * @brief Converts \p block into a set of bytes.
      * @param block MessageBlock
-     * @return std::vector<unsigned char>
+     * @return std::vector<CharType>
      */
-    std::vector<unsigned char> pack_block(const MessageBlock &block);
+    std::vector<CharType> pack_block(const MessageBlock& block);
 
     /**
      * @brief Packs zero or more \p messages into one or more MessageBlock structs.
      * @param messages std::vector<Message>
      * @return std::vector<MessageBlock>
      */
-    std::vector<MessageBlock> pack_messages(const std::vector<Message> & messages);
+    std::vector<MessageBlock> pack_messages(const std::vector<Message>& messages);
 
     /**
      * @brief Unpacks zero or more messages from \p block.
      * @param block MessageBlock
      * @return std::vector<Message>
      */
-    std::vector<Message> unpack_messages(const MessageBlock &block);
+    std::vector<Message> unpack_messages(const MessageBlock& block);
 
     /**
      * @brief Create an ACK Message struct.
      * @return Message
      */
     inline Message create_ack() {
-        return Message { .message_type =  MessageType::ACK };
+        return Message{.message_type = MessageType::ACK};
     }
 
     /**
@@ -96,9 +99,9 @@ namespace tavernmx::messaging {
      * @return Message
      */
     inline Message create_nak(const std::string& error = std::string{}) {
-        return Message {
+        return Message{
             .message_type = MessageType::NAK,
-            .values =  {{"error", error}}
+            .values = {{"error", error}}
         };
     }
 
@@ -109,7 +112,7 @@ namespace tavernmx::messaging {
      */
     inline Message create_hello(const std::string& user_name) {
         return {
-            .message_type =  MessageType::HELLO,
+            .message_type = MessageType::HELLO,
             .values = {{"user_name", user_name}}
         };
     }

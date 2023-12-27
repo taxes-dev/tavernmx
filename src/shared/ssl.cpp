@@ -40,7 +40,7 @@ namespace {
      * @return the number of bytes read
      * @throws tavernmx::ssl::SslError if there's an underlying socket error
      */
-    size_t receive_bytes(SSL* ssl, BIO* bio, unsigned char* buffer, size_t bufsize) {
+    size_t receive_bytes(SSL* ssl, BIO* bio, CharType* buffer, size_t bufsize) {
         while ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) != SSL_RECEIVED_SHUTDOWN) {
             ERR_clear_error();
             const int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
@@ -65,7 +65,7 @@ namespace {
 
 namespace tavernmx::ssl {
     void send_message(BIO* bio, const MessageBlock& block) {
-        const std::vector<unsigned char> block_data = pack_block(block);
+        const std::vector<CharType> block_data = pack_block(block);
         if (BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size())) < 0) {
             throw ssl_errors_to_exception("send_message BIO_write failed");
         }
@@ -74,17 +74,17 @@ namespace tavernmx::ssl {
 
     std::optional<MessageBlock> receive_message(BIO* bio) {
         SSL* ssl = get_ssl(bio);
-        unsigned char buffer[BUFFER_SIZE];
+        CharType buffer[BUFFER_SIZE];
         size_t rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
         if (rcvd == 0) {
             return {};
         }
 
         MessageBlock block{};
-        size_t applied = apply_buffer_to_block(buffer, rcvd, block);
+        size_t applied = apply_buffer_to_block(std::span{buffer, rcvd}, block);
         while (applied > 0 && applied < block.payload_size) {
             rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
-            applied += apply_buffer_to_block(buffer, rcvd, block, applied);
+            applied += apply_buffer_to_block(std::span{buffer, rcvd}, block, applied);
         }
 
         if (block.payload_size == 0) {
