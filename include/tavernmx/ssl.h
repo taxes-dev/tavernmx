@@ -149,5 +149,18 @@ namespace tavernmx::ssl {
      */
     void verify_certificate(SSL* ssl, bool allow_self_signed, const std::string& expected_hostname);
 
+    /**
+     * @brief Check if the \p bio is connected.
+     * @param bio pointer to BIO
+     * @return true if connected, otherwise false
+     */
     bool is_connected(BIO* bio);
+
+    /**
+     * @brief Checks if \p bio is in a state where it wants to retry, and if so, waits
+     * SSL_RETRY_MILLISECONDS before continuing (blocking).
+     * @param bio pointer to BIO
+     * @return true if \p bio wanted to retry, otherwise false
+     */
+    bool retry_wait(BIO* bio);
 }

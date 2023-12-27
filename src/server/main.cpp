@@ -1,67 +1,88 @@
+#include <chrono>
+#include <csignal>
 #include <iostream>
+#include <semaphore>
 #include <thread>
 #include <vector>
 
 #include "tavernmx/logging.h"
+#include "tavernmx/room.h"
 #include "tavernmx/server.h"
 
 using namespace tavernmx::messaging;
+using namespace tavernmx::rooms;
 using namespace tavernmx::server;
 using namespace std::string_literals;
 
-void client_worker(std::shared_ptr<ClientConnection>&& client) {
-    try {
-        // Expect client to send HELLO as the first message
-        auto hello = client->wait_for(MessageType::HELLO);
-        if (hello) {
-            std::cout << "Client connected: " << std::get<std::string>(hello.value().values["user_name"s]) << std::endl;
-            // TODO: simplify message creation/packing
-            auto ack = pack_messages({create_ack()});
-            client->send_message(ack[0]);
-        } else {
-            std::cout << "No HELLO sent by client, disconnecting" << std::endl;
-            return;
-        }
+namespace {
+    std::binary_semaphore server_ready_signal{0};
+    std::binary_semaphore server_shutdown_signal{0};
 
-        // Echo responses
-        while (client->is_connected()) {
-            if (auto block = client->receive_message()) {
-                MessageBlock response{};
-                std::cout << "Got message block: " << block->payload_size << std::endl;
-                std::string message{
-                    reinterpret_cast<char *>(block->payload.data()), static_cast<size_t>(block->payload_size)
-                };
-                std::cout << "Line: " << message << std::endl;
+    void server_worker(const ServerConfiguration& config) {
+        try {
+            RoomManager rooms{};
+            TMX_INFO("Server worker starting.");
 
-                std::string response_text{"You sent "};
-                response_text += std::to_string(message.length());
-                response_text += " characters";
-                response.payload_size = static_cast<int32_t>(response_text.length());
-                response.payload.resize(response_text.length());
-                std::copy(std::begin(response_text), std::end(response_text), std::begin(response.payload));
-                client->send_message(response);
+            TMX_INFO("Creating initial rooms ...");
+            for (auto& room_name: config.initial_rooms) {
+                TMX_INFO("#{}", room_name);
+                rooms.create_room(room_name);
             }
+            TMX_INFO("All rooms created.");
+
+            server_ready_signal.release();
+
+            //server_shutdown_signal.release();
+            TMX_INFO("Server worker exiting.");
+        } catch (std::exception& ex) {
+            TMX_ERR("Server worker exited with exception: {}", ex.what());
+            server_shutdown_signal.release();
         }
-        std::cout << "Worker exiting." << std::endl;
-    } catch (const std::exception& ex) {
-        std::cout << "Worker exited with exception:" << std::endl;
-        std::cout << ex.what() << std::endl;
+    }
+
+    void client_worker(std::shared_ptr<ClientConnection>&& client) {
+        try {
+            // Expect client to send HELLO as the first message
+            auto hello = client->wait_for(MessageType::HELLO);
+            if (hello) {
+                TMX_INFO("Client connected: {}", std::get<std::string>(hello.value().values["user_name"s]));
+                // TODO: simplify message creation/packing
+                auto ack = pack_messages({create_ack()});
+                client->send_message(ack[0]);
+            } else {
+                TMX_INFO("No HELLO sent by client, disconnecting.");
+                return;
+            }
+
+            // Echo responses
+            while (client->is_connected()) {
+                if (auto block = client->receive_message()) {
+                    TMX_INFO("Got message block: {} bytes", block->payload_size);
+                }
+            }
+            TMX_INFO("Client worker exiting.");
+        } catch (const std::exception& ex) {
+            TMX_ERR("Client worker exited with exception: {}", ex.what());
+        }
     }
 }
 
 int main() {
     try {
-        signal(SIGPIPE, SIG_IGN);
+        std::signal(SIGPIPE, SIG_IGN);
 
         tavernmx::configure_logging(spdlog::level::warn, {});
-        ServerConfiguration config{"server-config.json"};
-        spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
+        TMX_INFO("Loading configuration ...");
+        const ServerConfiguration config{"server-config.json"};
+        const spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
         std::optional<std::string> log_file{};
         if (!config.log_file.empty()) {
             log_file = config.log_file;
         }
         tavernmx::configure_logging(log_level, log_file);
-        TMX_INFO("Server starting.");
+
+        TMX_INFO("Configuration loaded. Server starting ...");
+        std::thread server_thread{server_worker, config};
 
         ClientConnectionManager connections{config.host_port};
         connections.load_certificate(config.host_certificate_path, config.host_private_key_path);
@@ -69,13 +90,19 @@ int main() {
             TMX_WARN("Interrupt received.");
             connections.shutdown();
         };
-        signal(SIGINT, [](int32_t) { sigint_handler(); });
+        std::signal(SIGINT, [](int32_t) { sigint_handler(); });
 
+        // wait for server worker to be ready
+        server_ready_signal.acquire();
+
+        TMX_INFO("Accepting connections ...");
         std::vector<std::thread> threads{};
-        while (auto client = connections.await_next_connection()) {
-            threads.emplace_back(client_worker, std::move(client.value()));
+        while (!server_shutdown_signal.try_acquire()) {
+            if (auto client = connections.await_next_connection()) {
+                threads.emplace_back(client_worker, std::move(client.value()));
 
-            // TODO: clean up dead threads
+                // TODO: clean up dead threads
+            }
         }
         TMX_INFO("Server shutdown.");
         return 0;

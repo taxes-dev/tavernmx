@@ -88,6 +88,10 @@ namespace tavernmx::server {
          * @brief File system path to the server's SSL private key.
          */
         std::string host_private_key_path{};
+        /**
+         * @brief Set of chat rooms to create at startup.
+         */
+        std::vector<std::string> initial_rooms{};
     };
 
     /**

@@ -24,6 +24,11 @@ namespace tavernmx::server {
                 throw ServerError{"host_private_key is required"};
             }
             this->host_private_key_path = config_data["host_private_key"];
+            if (config_data["initial_rooms"].is_array()) {
+                for (auto & room: config_data["initial_rooms"].items()) {
+                    this->initial_rooms.push_back(room.value());
+                }
+            }
         }
         catch (json::parse_error &ex) {
             throw ServerError{"Unable to parse config file", ex};

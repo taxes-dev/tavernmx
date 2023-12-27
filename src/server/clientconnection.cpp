@@ -41,9 +41,10 @@ namespace tavernmx::server {
 
     std::optional<std::shared_ptr<ClientConnection>> ClientConnectionManager::await_next_connection() {
         if (this->accept_bio == nullptr) {
-            std::string host_port = std::to_string(this->accept_port);
+            const std::string host_port = std::to_string(this->accept_port);
             this->accept_bio = ssl_unique_ptr<BIO>(BIO_new_accept(host_port.c_str()));
             BIO_set_nbio(this->accept_bio.get(), 1);
+            BIO_set_nbio_accept(this->accept_bio.get(), 1);
             if (BIO_do_accept(this->accept_bio.get()) != 1) {
                 throw ssl_errors_to_exception("Error in BIO_do_accept");
             }
@@ -51,6 +52,8 @@ namespace tavernmx::server {
 
         auto bio = accept_new_tcp_connection(this->accept_bio.get());
         if (bio == nullptr) {
+            // TODO: retry_wait here causes slight delay in client connections, fix
+            retry_wait(this->accept_bio.get());
             return {};
         }
         bio = std::move(bio)

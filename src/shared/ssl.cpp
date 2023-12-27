@@ -25,7 +25,7 @@ namespace {
         while (const unsigned long err = ERR_get_error() != 0) {
             char buffer[256];
             ERR_error_string_n(err, buffer, sizeof(buffer));
-            msg += ", ";
+            msg += ", "s;
             msg += buffer;
         }
         return tavernmx::ssl::SslError{msg};
@@ -44,11 +44,7 @@ namespace {
         while ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) != SSL_RECEIVED_SHUTDOWN) {
             ERR_clear_error();
             const int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
-            if (BIO_should_retry(bio)) {
-                BIO_wait(bio, time(nullptr) + std::min(tavernmx::ssl::SSL_RETRY_MILLISECONDS / 1000ll, 1ll),
-                         tavernmx::ssl::SSL_NAP_MILLISECONDS);
-                // BIO_wait pushes a timeout error into the queue
-                ERR_clear_error();
+            if (tavernmx::ssl::retry_wait(bio)) {
                 break;
             }
             if (len > 0) {
@@ -142,5 +138,16 @@ namespace tavernmx::ssl {
             return false;
         }
         return true;
+    }
+
+    bool retry_wait(BIO* bio) {
+        if (BIO_should_retry(bio)) {
+            BIO_wait(bio, time(nullptr) + std::min(SSL_RETRY_MILLISECONDS / 1000ll, 1ll),
+                     SSL_NAP_MILLISECONDS);
+            // BIO_wait pushes a timeout error into the queue
+            ERR_clear_error();
+            return true;
+        }
+        return false;
     }
 }
