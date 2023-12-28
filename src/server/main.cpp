@@ -15,10 +15,14 @@ using namespace tavernmx::server;
 using namespace std::string_literals;
 
 namespace {
+    /// Signals that the server work thread is ready to receive data.
     std::binary_semaphore server_ready_signal{0};
+    /// Signals that the main server thread has started accepting TLS connections.
+    std::binary_semaphore server_accept_signal{0};
+    /// Signals that the server work thread would like the main server thread to shutdown.
     std::binary_semaphore server_shutdown_signal{0};
 
-    void server_worker(const ServerConfiguration& config) {
+    void server_worker(const ServerConfiguration& config, std::shared_ptr<ClientConnectionManager> connections) {
         try {
             RoomManager rooms{};
             TMX_INFO("Server worker starting.");
@@ -30,10 +34,27 @@ namespace {
             }
             TMX_INFO("All rooms created.");
 
+            // Server work thread is ready, wait for main thread to start accepting connections.
             server_ready_signal.release();
+            server_accept_signal.acquire();
 
-            //server_shutdown_signal.release();
+            TMX_INFO("Server work loop starting ...");
+            while (connections->is_accepting_connections()) {
+                // Step 1a. Gather all messages from clients
+                auto clients = connections->get_active_connections();
+                // Step 1b. Distribute events to appropriate rooms
+                // Step 2a. Gather events from rooms
+                // Step 2b. Distribute to clients in those rooms
+                for (auto & client : clients) {
+                    client->messages_out.push(create_ack());
+                }
+                // Step 3. Clean up
+                // Step 4. Sleep
+                std::this_thread::sleep_for(std::chrono::milliseconds{100ll});
+            }
+
             TMX_INFO("Server worker exiting.");
+            server_shutdown_signal.release();
         } catch (std::exception& ex) {
             TMX_ERR("Server worker exited with exception: {}", ex.what());
             server_shutdown_signal.release();
@@ -54,11 +75,32 @@ namespace {
                 return;
             }
 
-            // Echo responses
+            // Serialize messages back and forth from client
             while (client->is_connected()) {
+                // 1. Read waiting messages on socket
                 if (auto block = client->receive_message()) {
-                    TMX_INFO("Got message block: {} bytes", block->payload_size);
+                    TMX_INFO("Receive message block: {} bytes", block->payload_size);
+                    for (auto & msg : unpack_messages(block.value())) {
+                        TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
+                        client->messages_in.push(std::move(msg));
+                    };
                 }
+
+                // 2. Send queued messages to socket
+                std::vector<Message> send_messages{};
+                while (auto msg = client->messages_out.pop()) {
+                    TMX_INFO("Send message: {}", static_cast<int32_t>(msg->message_type));
+                    send_messages.push_back(std::move(msg.value()));
+                }
+                // TODO: simplify message creation/packing
+                auto send_blocks = pack_messages(send_messages);
+                for (auto &block: send_blocks) {
+                    TMX_INFO("Send message block: {} bytes", block.payload_size);
+                    client->send_message(block);
+                }
+
+                // 3. Sleep
+                std::this_thread::sleep_for(std::chrono::milliseconds{100ll});
             }
             TMX_INFO("Client worker exiting.");
         } catch (const std::exception& ex) {
@@ -82,28 +124,38 @@ int main() {
         tavernmx::configure_logging(log_level, log_file);
 
         TMX_INFO("Configuration loaded. Server starting ...");
-        std::thread server_thread{server_worker, config};
 
-        ClientConnectionManager connections{config.host_port};
-        connections.load_certificate(config.host_certificate_path, config.host_private_key_path);
-        static auto sigint_handler = [&connections]() {
+        auto connections = std::make_shared<ClientConnectionManager>(config.host_port);
+        connections->load_certificate(config.host_certificate_path, config.host_private_key_path);
+        std::weak_ptr wk_connections = connections;
+        static auto sigint_handler = [&wk_connections]() {
             TMX_WARN("Interrupt received.");
-            connections.shutdown();
+            if (auto connections = wk_connections.lock()) {
+                connections->shutdown();
+            }
         };
         std::signal(SIGINT, [](int32_t) { sigint_handler(); });
 
-        // wait for server worker to be ready
+        // start server worker & wait for it to be ready
+        std::thread server_thread{server_worker, config, connections};
         server_ready_signal.acquire();
+
+        connections->begin_accept();
+        server_accept_signal.release();
 
         TMX_INFO("Accepting connections ...");
         std::vector<std::thread> threads{};
-        while (!server_shutdown_signal.try_acquire()) {
-            if (auto client = connections.await_next_connection()) {
+        while (!server_shutdown_signal.try_acquire() && connections->is_accepting_connections()) {
+            if (auto client = connections->await_next_connection()) {
                 threads.emplace_back(client_worker, std::move(client.value()));
 
                 // TODO: clean up dead threads
             }
         }
+
+        TMX_INFO("Waiting for server worker thread ...");
+        server_thread.join();
+
         TMX_INFO("Server shutdown.");
         return 0;
     } catch (std::exception& ex) {

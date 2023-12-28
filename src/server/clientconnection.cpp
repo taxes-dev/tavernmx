@@ -39,7 +39,7 @@ namespace tavernmx::server {
         }
     }
 
-    std::optional<std::shared_ptr<ClientConnection>> ClientConnectionManager::await_next_connection() {
+    void ClientConnectionManager::begin_accept() {
         if (this->accept_bio == nullptr) {
             const std::string host_port = std::to_string(this->accept_port);
             this->accept_bio = ssl_unique_ptr<BIO>(BIO_new_accept(host_port.c_str()));
@@ -49,6 +49,10 @@ namespace tavernmx::server {
                 throw ssl_errors_to_exception("Error in BIO_do_accept");
             }
         }
+    }
+
+    std::optional<std::shared_ptr<ClientConnection>> ClientConnectionManager::await_next_connection() {
+        this->begin_accept();
 
         auto bio = accept_new_tcp_connection(this->accept_bio.get());
         if (bio == nullptr) {
@@ -62,11 +66,16 @@ namespace tavernmx::server {
         this->cleanup_connections();
 
         auto connection = std::make_shared<ClientConnection>(std::move(bio));
-        this->active_connections.push_back(connection);
+        {
+            std::lock_guard guard{this->active_connections_mutex};
+
+            this->active_connections.push_back(connection);
+        }
         return connection;
     }
 
     void ClientConnectionManager::shutdown() noexcept {
+        std::lock_guard guard{this->active_connections_mutex};
         for (auto& connection: this->active_connections) {
             connection->shutdown();
         }
@@ -78,7 +87,18 @@ namespace tavernmx::server {
         }
     }
 
+    std::vector<std::shared_ptr<ClientConnection>> ClientConnectionManager::get_active_connections() {
+        std::lock_guard guard{this->active_connections_mutex};
+        // copy is intentional here
+        return this->active_connections;
+    }
+
+    bool ClientConnectionManager::is_accepting_connections() {
+        return this->accept_bio != nullptr;
+    }
+
     void ClientConnectionManager::cleanup_connections() {
+        std::lock_guard guard{this->active_connections_mutex};
         std::erase_if(this->active_connections, [](const std::shared_ptr<ClientConnection>& connection) {
             return !connection->is_connected();
         });

@@ -24,7 +24,7 @@ namespace {
     void setup_handlers(ClientUi&);
 
     std::string generate_random_username() {
-        const uint32_t numbers = time(nullptr) & 0xfff;
+        const uint32_t numbers = std::time(nullptr) & 0xfff;
         return "jdoe"s + std::to_string(numbers);
     };
 }
@@ -166,6 +166,14 @@ int main() {
                         connection.reset();
                         ui.set_error("Unable to connect to server."s);
                         ui.set_state(ClientUiState::Connect);
+                    }
+                }
+            } else if (ui.get_state() == ClientUiState::ChatWindow) {
+                // Check for messages
+                if (auto block = connection->receive_message()) {
+                    for (auto & msg : unpack_messages(block.value())) {
+                        TMX_INFO("Received message: {}", static_cast<int32_t>(msg.message_type));
+                        // TODO
                     }
                 }
             }
