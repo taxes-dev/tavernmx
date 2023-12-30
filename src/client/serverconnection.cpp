@@ -5,9 +5,6 @@
 using namespace tavernmx::ssl;
 
 namespace {
-    constexpr time_t WAIT_SECONDS = 3;
-    constexpr uint32_t NAP_MILLISECONDS = 250;
-
     tavernmx::client::ClientError ssl_errors_to_exception(const char* message) {
         char buffer[256];
         std::string msg{message};
@@ -26,6 +23,7 @@ namespace tavernmx::client {
         SSL_load_error_strings();
         this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_client_method()));
         SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);
+        SSL_CTX_set_mode(this->ctx.get(), SSL_MODE_AUTO_RETRY);
         if (SSL_CTX_set_default_verify_paths(this->ctx.get()) != 1) {
             throw ssl_errors_to_exception("Error loading trust store");
         }
@@ -49,7 +47,7 @@ namespace tavernmx::client {
         const std::string host = this->host_name + ":" + std::to_string(this->host_port);
         this->bio = ssl_unique_ptr<BIO>(BIO_new_connect(host.c_str()));
         BIO_set_nbio(this->bio.get(), 1);
-        if (BIO_do_connect_retry(this->bio.get(), WAIT_SECONDS, NAP_MILLISECONDS) != 1) {
+        if (BIO_do_connect_retry(this->bio.get(), SSL_TIMEOUT_MILLISECONDS / 1000, SSL_RETRY_MILLISECONDS) != 1) {
             throw ssl_errors_to_exception("BIO_do_connect failed");
         }
         this->bio = std::move(this->bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), NEWSSL_CLIENT));

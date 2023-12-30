@@ -126,7 +126,7 @@ int main() {
                     }
                     // Connect on background thread so it doesn't block UI
                     std::thread connection_thread{
-                        [&connection, &user_name]() {
+                        [&ui, &connection, &user_name]() {
                             try {
                                 connection->connect();
 
@@ -142,6 +142,9 @@ int main() {
                                 thread_signal.release();
                             } catch (std::exception& ex) {
                                 TMX_ERR("connection_thread error: {}", ex.what());
+                                connection.reset();
+                                ui.set_state(ClientUiState::Connect);
+                                ui.set_error("Unable to connect: "s + ex.what());
                                 thread_signal.release();
                             }
                         }

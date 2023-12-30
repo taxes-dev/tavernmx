@@ -153,15 +153,15 @@ namespace tavernmx::server {
         /**
          * @brief Blocks, waiting for a message of type \p message_type.
          * @param message_type tavernmx::messaging::MessageType expected
-         * @param milliseconds maximum number of milliseconds to wait, default is twice the value of
-         * tavernmx::ssl::SSL_RETRY_MILLISECONDS
+         * @param milliseconds maximum number of milliseconds to wait, default is the value of
+         * tavernmx::ssl::SSL_TIMEOUT_MILLISECONDS
          * @return a tavernmx::messaging::Message if a well-formed message of type
          * \p message_type is received, otherwise empty
          * @note This is used when a certain specific message is expected from the client. Note
          * that any other messages received while waiting will be discarded.
          */
         std::optional<messaging::Message> wait_for(messaging::MessageType message_type,
-                                                   ssl::Milliseconds milliseconds = ssl::SSL_RETRY_MILLISECONDS * 2);
+                                                   ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
 
     private:
         ssl::ssl_unique_ptr<BIO> bio{nullptr};
@@ -222,6 +222,8 @@ namespace tavernmx::server {
          * @return A std::shared_ptr<ClientConnection> for the newly connected client. If the accept port
          * is no longer listening, it will return empty.
          * @note The returned ClientConnection should be passed to a worker thread for further processing.
+         * If no connection is waiting, this will sleep for tavernmx::ssl::SSL_RETRY_MILLISECONDS to avoid
+         * tight loops.
          */
         std::optional<std::shared_ptr<ClientConnection>> await_next_connection();
 

@@ -1,4 +1,5 @@
 #include <chrono>
+#include <thread>
 #include <libc.h>
 #include "tavernmx/server.h"
 
@@ -23,6 +24,7 @@ namespace tavernmx::server {
         SSL_load_error_strings();
         this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_method()));
         SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);
+        SSL_CTX_set_mode(this->ctx.get(), SSL_MODE_AUTO_RETRY);
     }
 
     ClientConnectionManager::~ClientConnectionManager() {
@@ -56,8 +58,7 @@ namespace tavernmx::server {
 
         auto bio = accept_new_tcp_connection(this->accept_bio.get());
         if (bio == nullptr) {
-            // TODO: retry_wait here causes slight delay in client connections, fix
-            retry_wait(this->accept_bio.get());
+            std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
             return {};
         }
         bio = std::move(bio)

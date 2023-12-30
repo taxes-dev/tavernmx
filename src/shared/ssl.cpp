@@ -41,28 +41,32 @@ namespace {
      * @throws tavernmx::ssl::SslError if there's an underlying socket error
      */
     size_t receive_bytes(SSL* ssl, BIO* bio, CharType* buffer, size_t bufsize) {
-        while ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) != SSL_RECEIVED_SHUTDOWN) {
-            ERR_clear_error();
-            const int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
-            if (tavernmx::ssl::retry_wait(bio)) {
-                break;
-            }
-            if (len > 0) {
-                return static_cast<size_t>(len);
-            }
-            if (SSL_get_error(ssl, len) == SSL_ERROR_ZERO_RETURN) {
-                break;
-            }
-            throw ssl_errors_to_exception("receive_bytes read error");
+        if ((SSL_get_shutdown(ssl) & SSL_RECEIVED_SHUTDOWN) == SSL_RECEIVED_SHUTDOWN) {
+            return 0;
         }
-        return 0;
+        ERR_clear_error();
+        const int32_t len = BIO_read(bio, buffer, static_cast<int32_t>(bufsize));
+        if (len >= 0) {
+            return static_cast<size_t>(len);
+        }
+        if (BIO_should_retry(bio)) {
+            return 0;
+        }
+        if (SSL_get_error(ssl, len) == SSL_ERROR_ZERO_RETURN) {
+            return 0;
+        }
+        throw ssl_errors_to_exception("receive_bytes read error");
     }
 }
 
 namespace tavernmx::ssl {
     void send_message(BIO* bio, const MessageBlock& block) {
         const std::vector<CharType> block_data = pack_block(block);
-        if (BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size())) < 0) {
+        while (BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size())) < 0) {
+            if (BIO_should_retry(bio)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
+                continue;
+            }
             throw ssl_errors_to_exception("send_message BIO_write failed");
         }
         BIO_flush(bio);
@@ -73,6 +77,7 @@ namespace tavernmx::ssl {
         CharType buffer[BUFFER_SIZE];
         size_t rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
         if (rcvd == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
             return {};
         }
 
@@ -140,14 +145,4 @@ namespace tavernmx::ssl {
         return true;
     }
 
-    bool retry_wait(BIO* bio) {
-        if (BIO_should_retry(bio)) {
-            BIO_wait(bio, time(nullptr) + std::min(SSL_RETRY_MILLISECONDS / 1000ll, 1ll),
-                     SSL_NAP_MILLISECONDS);
-            // BIO_wait pushes a timeout error into the queue
-            ERR_clear_error();
-            return true;
-        }
-        return false;
-    }
 }

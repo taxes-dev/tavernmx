@@ -15,10 +15,10 @@ namespace tavernmx::ssl {
     constexpr long NEWSSL_SERVER = 0;
     /// Matches the type of std::chrono::milliseconds, min 45 bits
     using Milliseconds = long long;
-    /// Number of milliseconds to wait between SSL polls
-    constexpr Milliseconds SSL_NAP_MILLISECONDS = 250;
     /// Number of milliseconds to wait between SSL retries
-    constexpr Milliseconds SSL_RETRY_MILLISECONDS = 1000;
+    constexpr Milliseconds SSL_RETRY_MILLISECONDS = 50;
+    /// Number of milliseconds to wait for an expected response
+    constexpr Milliseconds SSL_TIMEOUT_MILLISECONDS = 3000;
 
     /**
      * @brief Base template for openssl deleters.
@@ -121,6 +121,8 @@ namespace tavernmx::ssl {
      * @param bio pointer to BIO
      * @return a tavernmx::messaging::MessageBlock if a well-formed message block was read, otherwise empty
      * @throws SslError if any network errors occur
+     * @note Automatically sleeps for SSL_RETRY_MILLISECONDS when no data is waiting in order
+     * to prevent tight loops.
      */
     std::optional<messaging::MessageBlock> receive_message(BIO* bio);
 
@@ -156,11 +158,4 @@ namespace tavernmx::ssl {
      */
     bool is_connected(BIO* bio);
 
-    /**
-     * @brief Checks if \p bio is in a state where it wants to retry, and if so, waits
-     * SSL_RETRY_MILLISECONDS before continuing (blocking).
-     * @param bio pointer to BIO
-     * @return true if \p bio wanted to retry, otherwise false
-     */
-    bool retry_wait(BIO* bio);
 }
