@@ -105,48 +105,4 @@ namespace tavernmx::server {
         });
     }
 
-    ClientConnection::~ClientConnection() {
-        this->shutdown();
-    }
-
-    bool ClientConnection::is_connected() {
-        return ssl::is_connected(this->bio.get());
-    }
-
-
-    std::optional<messaging::MessageBlock> ClientConnection::receive_message() {
-        return ssl::receive_message(this->bio.get());
-    }
-
-    void ClientConnection::send_message(const messaging::MessageBlock& block) {
-        ssl::send_message(this->bio.get(), block);
-    }
-
-    void ClientConnection::shutdown() noexcept {
-        if (this->bio) {
-            BIO_ssl_shutdown(this->bio.get());
-        }
-    }
-
-    std::optional<messaging::Message> ClientConnection::wait_for(messaging::MessageType message_type,
-                                                                 Milliseconds milliseconds) {
-        auto start = std::chrono::high_resolution_clock::now();
-        Milliseconds elapsed = 0;
-
-        while (elapsed < milliseconds) {
-            if (auto message_block = this->receive_message()) {
-                auto messages = unpack_messages(message_block.value());
-                for (auto& message: messages) {
-                    if (message.message_type == message_type) {
-                        return message;
-                    }
-                }
-            }
-
-            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start).count();
-        }
-
-        return {};
-    }
 }

@@ -8,7 +8,6 @@
 #include <imgui_impl_sdlrenderer2.h>
 #include <SDL.h>
 #include "tavernmx/client.h"
-#include "tavernmx/logging.h"
 #include "tavernmx/client-ui.h"
 
 using namespace tavernmx::client;
@@ -174,7 +173,7 @@ int main() {
             } else if (ui.get_state() == ClientUiState::ChatWindow) {
                 // Check for messages
                 if (auto block = connection->receive_message()) {
-                    for (auto & msg : unpack_messages(block.value())) {
+                    for (auto& msg: unpack_messages(block.value())) {
                         TMX_INFO("Received message: {}", static_cast<int32_t>(msg.message_type));
                         // TODO
                     }

@@ -1,11 +1,10 @@
 #include <chrono>
 #include "tavernmx/client.h"
-#include "tavernmx/logging.h"
 
 using namespace tavernmx::ssl;
 
 namespace {
-    tavernmx::client::ClientError ssl_errors_to_exception(const char* message) {
+    tavernmx::TransportError ssl_errors_to_exception(const char* message) {
         char buffer[256];
         std::string msg{message};
         while (const unsigned long err = ERR_get_error() != 0) {
@@ -13,7 +12,7 @@ namespace {
             msg += ", ";
             msg += buffer;
         }
-        return tavernmx::client::ClientError{msg};
+        return tavernmx::TransportError{msg};
     }
 }
 
@@ -28,11 +27,6 @@ namespace tavernmx::client {
             throw ssl_errors_to_exception("Error loading trust store");
         }
     }
-
-    ServerConnection::~ServerConnection() {
-        this->shutdown();
-    }
-
 
     void ServerConnection::load_certificate(const std::string& cert_path) {
         if (SSL_CTX_load_verify_locations(this->ctx.get(), cert_path.c_str(), nullptr) != 1) {
@@ -61,61 +55,5 @@ namespace tavernmx::client {
         }
         verify_certificate(get_ssl(this->bio.get()), false, this->host_name);
     }
-
-    void ServerConnection::send_message(const messaging::MessageBlock& block) {
-        if (!this->is_connected()) {
-            throw ClientError{"Connection lost"};
-        }
-        try {
-            ssl::send_message(this->bio.get(), block);
-        } catch (SslError& ex) {
-            throw ClientError{"send_message failed", ex};
-        }
-    }
-
-    std::optional<messaging::MessageBlock> ServerConnection::receive_message() {
-        if (!this->is_connected()) {
-            throw ClientError{"Connection lost"};
-        }
-        try {
-            return ssl::receive_message(this->bio.get());
-        } catch (SslError& ex) {
-            throw ClientError{"receive_message failed", ex};
-        }
-    }
-
-    bool ServerConnection::is_connected() const {
-        return ssl::is_connected(this->bio.get());
-    }
-
-    void ServerConnection::shutdown() noexcept {
-        if (this->bio) {
-            BIO_ssl_shutdown(this->bio.get());
-            this->bio.reset();
-        }
-    }
-
-    std::optional<messaging::Message> ServerConnection::wait_for(messaging::MessageType message_type,
-                                                                 Milliseconds milliseconds) {
-        const auto start = std::chrono::high_resolution_clock::now();
-        Milliseconds elapsed = 0;
-
-        while (elapsed < milliseconds) {
-            if (auto message_block = this->receive_message()) {
-                auto messages = unpack_messages(message_block.value());
-                for (auto& message: messages) {
-                    if (message.message_type == message_type) {
-                        return message;
-                    }
-                }
-            }
-
-            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start).count();
-        }
-
-        return {};
-    }
-
 
 }

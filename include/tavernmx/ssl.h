@@ -1,6 +1,3 @@
-//
-// Created by Taxes on 2023-11-27.
-//
 #pragma once
 
 #include <openssl/bio.h>

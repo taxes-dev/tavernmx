@@ -45,7 +45,7 @@ namespace {
                 // Step 1b. Distribute events to appropriate rooms
                 // Step 2a. Gather events from rooms
                 // Step 2b. Distribute to clients in those rooms
-                for (auto & client : clients) {
+                for (auto& client: clients) {
                     client->messages_out.push(create_ack());
                 }
                 // Step 3. Clean up
@@ -80,7 +80,7 @@ namespace {
                 // 1. Read waiting messages on socket
                 if (auto block = client->receive_message()) {
                     TMX_INFO("Receive message block: {} bytes", block->payload_size);
-                    for (auto & msg : unpack_messages(block.value())) {
+                    for (auto& msg: unpack_messages(block.value())) {
                         TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
                         client->messages_in.push(std::move(msg));
                     };
@@ -94,7 +94,7 @@ namespace {
                 }
                 // TODO: simplify message creation/packing
                 auto send_blocks = pack_messages(send_messages);
-                for (auto &block: send_blocks) {
+                for (auto& block: send_blocks) {
                     TMX_INFO("Send message block: {} bytes", block.payload_size);
                     client->send_message(block);
                 }
