@@ -53,6 +53,7 @@ namespace tavernmx {
          * @brief Creates a new BaseConnection.
          */
         BaseConnection() = default;
+
         virtual ~BaseConnection() { this->shutdown(); }
 
         BaseConnection(const BaseConnection&) = delete;
@@ -71,24 +72,46 @@ namespace tavernmx {
         std::optional<messaging::MessageBlock> receive_message();
 
         /**
-         * @brief Attempts to send a message to the server.
+         * @brief Attempts to send a message block to the server.
          * @param block block of data to send
          * @throws TransportError if a network error occurs
          */
-        void send_message(const messaging::MessageBlock& block);
+        void send_message_block(const messaging::MessageBlock& block);
+
+        /**
+         * @brief Attempts to send a single message to the server.
+         * @param message tavernmx::messaging::Message
+         * @throws TransportError if a network error occurs
+         */
+        void send_message(const messaging::Message& message);
 
         /**
          * @brief Attempts to send zero or more messages to the server.
-         * @param start start of range pointing to MessageBlock& values
+         * @param begin start of range pointing to Message values
+         * @param end end of range pointing to Message values
+         * @throws TransportError if a network error occurs
+         */
+        template<typename Iterator>
+            requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, messaging::Message>
+        void send_messages(Iterator begin, Iterator end) {
+            // TODO: ditch intermediary container
+            const std::vector<messaging::Message> messages{begin, end};
+            const auto blocks = messaging::pack_messages(messages);
+            this->send_message_blocks(std::cbegin(blocks), std::cend(blocks));
+        };
+
+        /**
+         * @brief Attempts to send zero or more message blocks to the server.
+         * @param begin start of range pointing to MessageBlock& values
          * @param end end of range pointing to MessageBlock& values
          * @throws TransportError if a network error occurs
          */
         template<class Iterator>
-            requires std::forward_iterator<Iterator> && std::same_as<typename Iterator::reference,
-                         messaging::MessageBlock &>
-        void send_messages(Iterator start, Iterator end) {
-            for (auto it = start; it < end; ++it) {
-                this->send_message(*it);
+            requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>,
+                         messaging::MessageBlock>
+        void send_message_blocks(Iterator begin, Iterator end) {
+            for (auto it = begin; begin < end; ++it) {
+                this->send_message_block(*it);
             }
         };
 

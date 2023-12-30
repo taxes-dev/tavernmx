@@ -128,10 +128,7 @@ int main() {
                         [&ui, &connection, &user_name]() {
                             try {
                                 connection->connect();
-
-                                Message msg = create_hello(user_name);
-                                auto msgs = pack_messages({msg});
-                                connection->send_messages(std::begin(msgs), std::end(msgs));
+                                connection->send_message(create_hello(user_name));
 
                                 if (!connection->wait_for(MessageType::ACK)) {
                                     TMX_ERR("Server did not acknowledge HELLO");

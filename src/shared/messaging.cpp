@@ -10,6 +10,28 @@ using json = nlohmann::json;
 
 namespace {
     constexpr size_t TARGET_BLOCK_SIZE = 1400;
+
+    json message_to_json(const tavernmx::messaging::Message& message) {
+        json message_json = json::object();
+        message_json["message_type"] = message.message_type;
+        message_json["values"] = json::object();
+        for (auto& data: message.values) {
+            switch (data.second.index()) {
+                case 0:
+                    message_json["values"].push_back({data.first, std::get<std::string>(data.second)});
+                    break;
+                case 1:
+                    message_json["values"].push_back({data.first, std::get<int32_t>(data.second)});
+                    break;
+                case 2:
+                    message_json["values"].push_back({data.first, std::get<bool>(data.second)});
+                    break;
+                default:
+                    assert(false && "Unknown value variant index");
+            }
+        }
+        return message_json;
+    }
 }
 
 namespace tavernmx::messaging {
@@ -67,6 +89,15 @@ namespace tavernmx::messaging {
         return block_data;
     }
 
+    MessageBlock pack_message(const Message& message) {
+        MessageBlock block{};
+        json group_json = json::array();
+        group_json.push_back(message_to_json(message));
+        block.payload = json::to_msgpack(group_json);
+        block.payload_size = block.payload.size();
+        return block;
+    }
+
     std::vector<MessageBlock> pack_messages(const std::vector<Message>& messages) {
         std::vector<MessageBlock> blocks{};
         if (messages.empty()) {
@@ -75,25 +106,7 @@ namespace tavernmx::messaging {
 
         json group_json = json::array();
         for (auto& message: messages) {
-            json message_json = json::object();
-            message_json["message_type"] = message.message_type;
-            message_json["values"] = json::object();
-            for (auto& data: message.values) {
-                switch (data.second.index()) {
-                    case 0:
-                        message_json["values"].push_back({data.first, std::get<std::string>(data.second)});
-                        break;
-                    case 1:
-                        message_json["values"].push_back({data.first, std::get<int32_t>(data.second)});
-                        break;
-                    case 2:
-                        message_json["values"].push_back({data.first, std::get<bool>(data.second)});
-                        break;
-                    default:
-                        assert(false && "Unknown value variant index");
-                }
-            }
-            group_json.push_back(std::move(message_json));
+            group_json.push_back(message_to_json(message));
         }
 
         //TODO: split blocks by size

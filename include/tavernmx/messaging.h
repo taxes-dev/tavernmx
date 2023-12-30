@@ -72,6 +72,13 @@ namespace tavernmx::messaging {
     std::vector<CharType> pack_block(const MessageBlock& block);
 
     /**
+     * @brief Packs a \p message into a MessageBlock struct.
+     * @param message Message
+     * @return MessageBlock
+     */
+    MessageBlock pack_message(const Message& message);
+
+    /**
      * @brief Packs zero or more \p messages into one or more MessageBlock structs.
      * @param messages std::vector<Message>
      * @return std::vector<MessageBlock>

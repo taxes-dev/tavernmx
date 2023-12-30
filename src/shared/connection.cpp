@@ -1,19 +1,26 @@
 #include <chrono>
 #include "tavernmx/connection.h"
 
+using namespace tavernmx::messaging;
+
 namespace tavernmx {
-    void BaseConnection::send_message(const messaging::MessageBlock& block) {
+    void BaseConnection::send_message_block(const MessageBlock& block) {
         if (!this->is_connected()) {
             throw TransportError{"Connection lost"};
         }
         try {
             ssl::send_message(this->bio.get(), block);
         } catch (ssl::SslError& ex) {
-            throw TransportError{"send_message failed", ex};
+            throw TransportError{"send_message_block failed", ex};
         }
     }
 
-    std::optional<messaging::MessageBlock> BaseConnection::receive_message() {
+    void BaseConnection::send_message(const Message& message) {
+        auto block = pack_message(message);
+        this->send_message_block(block);
+    }
+
+    std::optional<MessageBlock> BaseConnection::receive_message() {
         if (!this->is_connected()) {
             throw TransportError{"Connection lost"};
         }
@@ -35,8 +42,8 @@ namespace tavernmx {
         }
     }
 
-    std::optional<messaging::Message> BaseConnection::wait_for(messaging::MessageType message_type,
-                                                                 ssl::Milliseconds milliseconds) {
+    std::optional<Message> BaseConnection::wait_for(MessageType message_type,
+                                                    ssl::Milliseconds milliseconds) {
         const auto start = std::chrono::high_resolution_clock::now();
         ssl::Milliseconds elapsed = 0;
 
@@ -56,5 +63,4 @@ namespace tavernmx {
 
         return {};
     }
-
 }

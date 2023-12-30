@@ -67,9 +67,7 @@ namespace {
             auto hello = client->wait_for(MessageType::HELLO);
             if (hello) {
                 TMX_INFO("Client connected: {}", std::get<std::string>(hello.value().values["user_name"s]));
-                // TODO: simplify message creation/packing
-                auto ack = pack_messages({create_ack()});
-                client->send_message(ack[0]);
+                client->send_message(create_ack());
             } else {
                 TMX_INFO("No HELLO sent by client, disconnecting.");
                 return;
@@ -92,12 +90,7 @@ namespace {
                     TMX_INFO("Send message: {}", static_cast<int32_t>(msg->message_type));
                     send_messages.push_back(std::move(msg.value()));
                 }
-                // TODO: simplify message creation/packing
-                auto send_blocks = pack_messages(send_messages);
-                for (auto& block: send_blocks) {
-                    TMX_INFO("Send message block: {} bytes", block.payload_size);
-                    client->send_message(block);
-                }
+                client->send_messages(std::cbegin(send_messages), std::cend(send_messages));
 
                 // 3. Sleep
                 std::this_thread::sleep_for(std::chrono::milliseconds{100ll});
