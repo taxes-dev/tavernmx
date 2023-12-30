@@ -6,24 +6,28 @@
 #include "connection.h"
 #include "queue.h"
 
-namespace tavernmx::server {
+namespace tavernmx::server
+{
     /**
      * @brief Exception for server-related errors.
      */
-    class ServerError : public std::exception {
+    class ServerError : public std::exception
+    {
     public:
         /**
          * @brief Create a new ServerError.
          * @param what description of the error
          */
-        explicit ServerError(std::string what) noexcept: what_str{std::move(what)} {
+        explicit ServerError(std::string what) noexcept
+            : what_str{ std::move(what) } {
         };
 
         /**
          * @brief Create a new ServerError.
          * @param what description of the error
          */
-        explicit ServerError(const char* what) noexcept: what_str{what} {
+        explicit ServerError(const char* what) noexcept
+            : what_str{ what } {
         };
 
         /**
@@ -31,21 +35,23 @@ namespace tavernmx::server {
          * @param what description of the error
          * @param inner exception that caused this error
          */
-        ServerError(std::string what, const std::exception& inner) noexcept: what_str{
-            std::move(what)
-        } { this->what_str += std::string{", caused by: "} + inner.what(); };
+        ServerError(std::string what, const std::exception& inner) noexcept
+            : what_str{
+                std::move(what)
+            } { this->what_str += std::string{ ", caused by: " } + inner.what(); };
 
         /**
          * @brief Create a new ServerError.
          * @param what description of the error
          * @param inner exception that cause this error
          */
-        ServerError(const char* what, const std::exception& inner) noexcept: what_str{what} {
+        ServerError(const char* what, const std::exception& inner) noexcept
+            : what_str{ what } {
             this->what_str +=
-                    std::string{
-                        ", caused by: "
-                    } +
-                    inner.what();
+                std::string{
+                    ", caused by: "
+                } +
+                inner.what();
         }
 
         /**
@@ -61,7 +67,8 @@ namespace tavernmx::server {
     /**
      * @brief Parses and contains the server configuration data.
      */
-    class ServerConfiguration {
+    class ServerConfiguration
+    {
     public:
         /**
          * @brief Initializes ServerConfiguration by loading the .json file stored at \p config_path.
@@ -103,7 +110,8 @@ namespace tavernmx::server {
     /**
      * @brief Manages an individual connection to a tavernmx client.
      */
-    class ClientConnection : public BaseConnection {
+    class ClientConnection : public BaseConnection
+    {
     public:
         ThreadSafeQueue<messaging::Message> messages_in{};
         ThreadSafeQueue<messaging::Message> messages_out{};
@@ -128,7 +136,8 @@ namespace tavernmx::server {
     /**
      * @brief Accepts new client connections to the server and manages them.
      */
-    class ClientConnectionManager {
+    class ClientConnectionManager
+    {
     public:
         /**
          * @brief Create a new ClientConnectionManager that will accept connections
@@ -146,8 +155,8 @@ namespace tavernmx::server {
         };
 
         ClientConnectionManager& operator=(ClientConnectionManager&& other) noexcept {
-            std::lock_guard guard1{this->active_connections_mutex};
-            std::lock_guard guard2{other.active_connections_mutex};
+            std::lock_guard guard1{ this->active_connections_mutex };
+            std::lock_guard guard2{ other.active_connections_mutex };
             this->accept_port = other.accept_port;
             this->ctx = std::move(other.ctx);
             this->accept_bio = std::move(other.accept_bio);
@@ -205,8 +214,8 @@ namespace tavernmx::server {
 
     private:
         int32_t accept_port{};
-        ssl::ssl_unique_ptr<SSL_CTX> ctx{nullptr};
-        ssl::ssl_unique_ptr<BIO> accept_bio{nullptr};
+        ssl::ssl_unique_ptr<SSL_CTX> ctx{ nullptr };
+        ssl::ssl_unique_ptr<BIO> accept_bio{ nullptr };
         std::vector<std::shared_ptr<ClientConnection>> active_connections{};
         mutable std::mutex active_connections_mutex{};
 

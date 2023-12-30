@@ -3,22 +3,24 @@
 
 using namespace tavernmx::ssl;
 
-namespace {
+namespace
+{
     tavernmx::TransportError ssl_errors_to_exception(const char* message) {
         char buffer[256];
-        std::string msg{message};
+        std::string msg{ message };
         while (const unsigned long err = ERR_get_error() != 0) {
             ERR_error_string_n(err, buffer, sizeof(buffer));
             msg += ", ";
             msg += buffer;
         }
-        return tavernmx::TransportError{msg};
+        return tavernmx::TransportError{ msg };
     }
 }
 
-namespace tavernmx::client {
+namespace tavernmx::client
+{
     ServerConnection::ServerConnection(std::string host_name, int32_t host_port)
-        : host_name{std::move(host_name)}, host_port{host_port} {
+        : host_name{ std::move(host_name) }, host_port{ host_port } {
         SSL_load_error_strings();
         this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_client_method()));
         SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);

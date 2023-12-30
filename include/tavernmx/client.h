@@ -9,39 +9,45 @@
 #include "connection.h"
 #include "logging.h"
 
-namespace tavernmx::client {
+namespace tavernmx::client
+{
     /**
      * @brief Exception for client-related errors.
      */
-    class ClientError : public std::exception {
+    class ClientError : public std::exception
+    {
     public:
         /**
          * @brief Create a new ClientError.
          * @param what description of the error
          */
-        explicit ClientError(std::string what) noexcept : what_str{std::move(what)} {
+        explicit ClientError(std::string what) noexcept
+            : what_str{ std::move(what) } {
         };
         /**
          * @brief Create a new ClientError.
          * @param what description of the error
          */
-        explicit ClientError(const char* what) noexcept : what_str{what} {
-        };
-        /**
-         * @brief Create a new ClientError.
-         * @param what description of the error
-         * @param inner exception that caused this error
-         */
-        ClientError(std::string what, const std::exception& inner) noexcept : what_str{std::move(what)} {
-            this->what_str += std::string{", caused by: "} + inner.what();
+        explicit ClientError(const char* what) noexcept
+            : what_str{ what } {
         };
         /**
          * @brief Create a new ClientError.
          * @param what description of the error
          * @param inner exception that caused this error
          */
-        ClientError(const char* what, const std::exception& inner) noexcept : what_str{what} {
-            this->what_str += std::string{", caused by: "} + inner.what();
+        ClientError(std::string what, const std::exception& inner) noexcept
+            : what_str{ std::move(what) } {
+            this->what_str += std::string{ ", caused by: " } + inner.what();
+        };
+        /**
+         * @brief Create a new ClientError.
+         * @param what description of the error
+         * @param inner exception that caused this error
+         */
+        ClientError(const char* what, const std::exception& inner) noexcept
+            : what_str{ what } {
+            this->what_str += std::string{ ", caused by: " } + inner.what();
         }
 
         /**
@@ -57,7 +63,8 @@ namespace tavernmx::client {
     /**
      * @brief Parses and contains the client configuration data.
      */
-    class ClientConfiguration {
+    class ClientConfiguration
+    {
     public:
         /**
          * @brief Initializes ClientConfiguration by loading the .json file stored at \p config_path.
@@ -91,7 +98,8 @@ namespace tavernmx::client {
     /**
      * @brief Manages the connection to the tavernmx server.
      */
-    class ServerConnection : public BaseConnection {
+    class ServerConnection : public BaseConnection
+    {
     public:
         /**
          * @brief Creates a ServerConnection that will connect to \p host_name on TCP port \p host_port.
@@ -132,6 +140,6 @@ namespace tavernmx::client {
     private:
         std::string host_name{};
         int32_t host_port{};
-        ssl::ssl_unique_ptr<SSL_CTX> ctx{nullptr};
+        ssl::ssl_unique_ptr<SSL_CTX> ctx{ nullptr };
     };
 }

@@ -5,20 +5,24 @@
 #include <vector>
 #include "queue.h"
 
-namespace tavernmx::rooms {
+namespace tavernmx::rooms
+{
     using EventTimeStamp = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
 
-    struct RoomEvent {
-        EventTimeStamp timestamp{time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now())};
+    struct RoomEvent
+    {
+        EventTimeStamp timestamp{ time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()) };
         std::string origin_user_name{};
         std::string event_text{};
     };
 
-    class Room {
+    class Room
+    {
     public:
         ThreadSafeQueue<RoomEvent> events{};
 
-        explicit Room(std::string room_name) : _room_name{std::move(room_name)} {
+        explicit Room(std::string room_name)
+            : _room_name{ std::move(room_name) } {
         };
 
         Room(const Room&) = delete;
@@ -35,7 +39,8 @@ namespace tavernmx::rooms {
         std::string _room_name{};
     };
 
-    class RoomManager {
+    class RoomManager
+    {
     public:
         RoomManager() = default;
 
@@ -57,9 +62,9 @@ namespace tavernmx::rooms {
 
         std::shared_ptr<Room> operator[](const std::string& room_name) const {
             auto it = std::find_if(std::cbegin(this->active_rooms), std::cend(this->active_rooms),
-                                   [&room_name](const std::shared_ptr<Room>& room) {
-                                       return room->room_name() == room_name;
-                                   });
+                [&room_name](const std::shared_ptr<Room>& room) {
+                    return room->room_name() == room_name;
+                });
             if (it != std::cend(this->active_rooms)) {
                 return *it;
             }

@@ -8,33 +8,35 @@
 
 using json = nlohmann::json;
 
-namespace {
+namespace
+{
     constexpr size_t TARGET_BLOCK_SIZE = 1400;
 
     json message_to_json(const tavernmx::messaging::Message& message) {
         json message_json = json::object();
         message_json["message_type"] = message.message_type;
         message_json["values"] = json::object();
-        for (auto& data: message.values) {
+        for (auto& data : message.values) {
             switch (data.second.index()) {
-                case 0:
-                    message_json["values"].push_back({data.first, std::get<std::string>(data.second)});
-                    break;
-                case 1:
-                    message_json["values"].push_back({data.first, std::get<int32_t>(data.second)});
-                    break;
-                case 2:
-                    message_json["values"].push_back({data.first, std::get<bool>(data.second)});
-                    break;
-                default:
-                    assert(false && "Unknown value variant index");
+            case 0:
+                message_json["values"].push_back({ data.first, std::get<std::string>(data.second) });
+                break;
+            case 1:
+                message_json["values"].push_back({ data.first, std::get<int32_t>(data.second) });
+                break;
+            case 2:
+                message_json["values"].push_back({ data.first, std::get<bool>(data.second) });
+                break;
+            default:
+                assert(false && "Unknown value variant index");
             }
         }
         return message_json;
     }
 }
 
-namespace tavernmx::messaging {
+namespace tavernmx::messaging
+{
     size_t
     apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset) {
         if (buffer.empty()) {
@@ -48,7 +50,7 @@ namespace tavernmx::messaging {
             if (header_it == std::cend(buffer) ||
                 (header_it + sizeof(block.HEADER)) > std::cend(buffer) ||
                 !std::equal(std::cbegin(block.HEADER), std::cend(block.HEADER), header_it,
-                            header_it + sizeof(block.HEADER))) {
+                    header_it + sizeof(block.HEADER))) {
                 return 0;
             }
             // found, extract the block size
@@ -105,7 +107,7 @@ namespace tavernmx::messaging {
         }
 
         json group_json = json::array();
-        for (auto& message: messages) {
+        for (auto& message : messages) {
             group_json.push_back(message_to_json(message));
         }
 
@@ -126,11 +128,11 @@ namespace tavernmx::messaging {
 
         auto group_json = json::from_msgpack(block.payload);
         if (group_json.is_array()) {
-            for (auto& message_json: group_json) {
+            for (auto& message_json : group_json) {
                 Message message{};
                 message.message_type = message_json["message_type"].get<MessageType>();
                 if (message_json["values"].is_object()) {
-                    for (auto& values_json: message_json["values"].items()) {
+                    for (auto& values_json : message_json["values"].items()) {
                         if (values_json.value().is_string()) {
                             message.values[values_json.key()] = values_json.value().get<std::string>();
                         } else if (values_json.value().is_number_integer()) {

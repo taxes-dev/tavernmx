@@ -7,16 +7,18 @@
 #include <variant>
 #include <vector>
 
-namespace tavernmx::messaging {
+namespace tavernmx::messaging
+{
     /// Data type for transport characters
     using CharType = unsigned char;
 
     /**
      * @brief Structure for sending messages over the network.
      */
-    struct MessageBlock {
+    struct MessageBlock
+    {
         /// Header, for locating the start of a MessageBlock.
-        const CharType HEADER[4] = {'t', 'm', 'x', 0x02};
+        const CharType HEADER[4] = { 't', 'm', 'x', 0x02 };
         /// Size in bytes of payload.
         uint32_t payload_size = 0;
         /// Payload data.
@@ -26,7 +28,8 @@ namespace tavernmx::messaging {
     /**
      * @brief Specific messages understood by client and server.
      */
-    enum class MessageType : int32_t {
+    enum class MessageType : int32_t
+    {
         Invalid = 0,
 
         // Basic messages
@@ -41,9 +44,10 @@ namespace tavernmx::messaging {
      * @brief Structure for an individual message.
      * @note Prefer the create_* functions instead of instantiating directly.
      */
-    struct Message {
+    struct Message
+    {
         /// The type of message sent.
-        MessageType message_type{MessageType::Invalid};
+        MessageType message_type{ MessageType::Invalid };
 
         /// Arbitray map of parameters associated with the message. Each key can contain string, int, or bool.
         std::unordered_map<std::string, std::variant<std::string, int32_t, bool>> values{};
@@ -97,7 +101,7 @@ namespace tavernmx::messaging {
      * @return Message
      */
     inline Message create_ack() {
-        return Message{.message_type = MessageType::ACK};
+        return Message{ .message_type = MessageType::ACK };
     }
 
     /**
@@ -108,7 +112,7 @@ namespace tavernmx::messaging {
     inline Message create_nak(const std::string& error = std::string{}) {
         return Message{
             .message_type = MessageType::NAK,
-            .values = {{"error", error}}
+            .values = { { "error", error } }
         };
     }
 
@@ -120,7 +124,7 @@ namespace tavernmx::messaging {
     inline Message create_hello(const std::string& user_name) {
         return {
             .message_type = MessageType::HELLO,
-            .values = {{"user_name", user_name}}
+            .values = { { "user_name", user_name } }
         };
     }
 }

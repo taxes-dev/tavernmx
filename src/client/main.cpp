@@ -14,11 +14,12 @@ using namespace tavernmx::client;
 using namespace tavernmx::messaging;
 using namespace std::string_literals;
 
-namespace {
+namespace
+{
     constexpr int32_t WIN_WIDTH = 1280;
     constexpr int32_t WIN_HEIGHT = 720;
 
-    std::binary_semaphore thread_signal{0};
+    std::binary_semaphore thread_signal{ 0 };
 
     void setup_handlers(ClientUi&);
 
@@ -31,12 +32,12 @@ namespace {
 int main() {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-    std::unique_ptr<ServerConnection> connection{nullptr};
+    std::unique_ptr<ServerConnection> connection{ nullptr };
 
     std::signal(SIGPIPE, SIG_IGN);
 
     try {
-        ClientConfiguration config{"client-config.json"};
+        ClientConfiguration config{ "client-config.json" };
 
         spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
         std::optional<std::string> log_file{};
@@ -55,7 +56,7 @@ int main() {
 
         // Create window with SDL_Renderer graphics context
         window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                  WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+            WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         if (window == nullptr) {
             TMX_ERR("SDL Error creating SDL_Window: {}", SDL_GetError());
         }
@@ -94,17 +95,17 @@ int main() {
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL2_ProcessEvent(&event);
                 switch (event.type) {
-                    case SDL_QUIT:
+                case SDL_QUIT:
+                    done = true;
+                    break;
+                case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
                         done = true;
-                        break;
-                    case SDL_WINDOWEVENT:
-                        if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-                            done = true;
-                        }
-                        if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                            ui.set_viewport_resized();
-                        }
-                        break;
+                    }
+                    if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                        ui.set_viewport_resized();
+                    }
+                    break;
                 }
             }
 
@@ -120,7 +121,7 @@ int main() {
                     int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"]);
                     TMX_INFO("Connecting to {}:{} ...", host_name, host_port);
                     connection = std::make_unique<ServerConnection>(host_name, host_port);
-                    for (auto& cert: config.custom_certificates) {
+                    for (auto& cert : config.custom_certificates) {
                         connection->load_certificate(cert);
                     }
                     // Connect on background thread so it doesn't block UI
@@ -149,7 +150,7 @@ int main() {
                 } catch (std::exception& ex) {
                     ui.set_state(ClientUiState::Connect);
                     connection.reset();
-                    ui.set_error(std::string{ex.what()});
+                    ui.set_error(std::string{ ex.what() });
                 }
             } else if (ui.get_state() == ClientUiState::Connecting) {
                 // Poll to see if connection attempt is resolved
@@ -170,7 +171,7 @@ int main() {
             } else if (ui.get_state() == ClientUiState::ChatWindow) {
                 // Check for messages
                 if (auto block = connection->receive_message()) {
-                    for (auto& msg: unpack_messages(block.value())) {
+                    for (auto& msg : unpack_messages(block.value())) {
                         TMX_INFO("Received message: {}", static_cast<int32_t>(msg.message_type));
                         // TODO
                     }
@@ -214,7 +215,8 @@ int main() {
     return 0;
 }
 
-namespace {
+namespace
+{
     void connect_connectbutton(ClientUi* ui) {
         TMX_INFO("Connect button pressed.");
         ui->set_state(ClientUiState::Connecting);

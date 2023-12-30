@@ -2,39 +2,45 @@
 
 #include "ssl.h"
 
-namespace tavernmx {
+namespace tavernmx
+{
     /**
      * @brief Exception for transport errors.
      */
-    class TransportError : public std::exception {
+    class TransportError : public std::exception
+    {
     public:
         /**
          * @brief Create a new TransportError.
          * @param what description of the error
          */
-        explicit TransportError(std::string what) noexcept : what_str{std::move(what)} {
+        explicit TransportError(std::string what) noexcept
+            : what_str{ std::move(what) } {
         };
         /**
          * @brief Create a new TransportError.
          * @param what description of the error
          */
-        explicit TransportError(const char* what) noexcept : what_str{what} {
-        };
-        /**
-         * @brief Create a new TransportError.
-         * @param what description of the error
-         * @param inner exception that caused this error
-         */
-        TransportError(std::string what, const std::exception& inner) noexcept : what_str{std::move(what)} {
-            this->what_str += std::string{", caused by: "} + inner.what();
+        explicit TransportError(const char* what) noexcept
+            : what_str{ what } {
         };
         /**
          * @brief Create a new TransportError.
          * @param what description of the error
          * @param inner exception that caused this error
          */
-        TransportError(const char* what, const std::exception& inner) noexcept : what_str{what} {
-            this->what_str += std::string{", caused by: "} + inner.what();
+        TransportError(std::string what, const std::exception& inner) noexcept
+            : what_str{ std::move(what) } {
+            this->what_str += std::string{ ", caused by: " } + inner.what();
+        };
+        /**
+         * @brief Create a new TransportError.
+         * @param what description of the error
+         * @param inner exception that caused this error
+         */
+        TransportError(const char* what, const std::exception& inner) noexcept
+            : what_str{ what } {
+            this->what_str += std::string{ ", caused by: " } + inner.what();
         }
 
         /**
@@ -47,7 +53,8 @@ namespace tavernmx {
         std::string what_str{};
     };
 
-    class BaseConnection {
+    class BaseConnection
+    {
     public:
         /**
          * @brief Creates a new BaseConnection.
@@ -91,11 +98,11 @@ namespace tavernmx {
          * @param end end of range pointing to Message values
          * @throws TransportError if a network error occurs
          */
-        template<typename Iterator>
+        template <typename Iterator>
             requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, messaging::Message>
         void send_messages(Iterator begin, Iterator end) {
             // TODO: ditch intermediary container
-            const std::vector<messaging::Message> messages{begin, end};
+            const std::vector<messaging::Message> messages{ begin, end };
             const auto blocks = messaging::pack_messages(messages);
             this->send_message_blocks(std::cbegin(blocks), std::cend(blocks));
         };
@@ -106,7 +113,7 @@ namespace tavernmx {
          * @param end end of range pointing to MessageBlock& values
          * @throws TransportError if a network error occurs
          */
-        template<class Iterator>
+        template <class Iterator>
             requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>,
                          messaging::MessageBlock>
         void send_message_blocks(Iterator begin, Iterator end) {
@@ -137,9 +144,9 @@ namespace tavernmx {
          * that any other messages received while waiting will be discarded.
          */
         std::optional<messaging::Message> wait_for(messaging::MessageType message_type,
-                                                   ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
+            ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
 
     protected:
-        ssl::ssl_unique_ptr<BIO> bio{nullptr};
+        ssl::ssl_unique_ptr<BIO> bio{ nullptr };
     };
 }

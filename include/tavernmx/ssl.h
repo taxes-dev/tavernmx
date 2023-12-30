@@ -5,7 +5,8 @@
 #include <openssl/err.h>
 #include "tavernmx/messaging.h"
 
-namespace tavernmx::ssl {
+namespace tavernmx::ssl
+{
     /// Used by BIO_new_ssl() to indicate a client socket
     constexpr long NEWSSL_CLIENT = 1;
     /// Used by BIO_new_ssl() to indicate a server socket
@@ -21,38 +22,42 @@ namespace tavernmx::ssl {
      * @brief Base template for openssl deleters.
      * @tparam T an openssl pointer type
      */
-    template<class T>
+    template <class T>
     struct deleter_of;
 
     /**
      * @brief openssl deleter specialization for SSL_CTX.
      */
-    template<>
-    struct deleter_of<SSL_CTX> {
+    template <>
+    struct deleter_of<SSL_CTX>
+    {
         void operator()(SSL_CTX* p) const { SSL_CTX_free(p); }
     };
 
     /**
      * @brief openssl deleter specialization for SSL.
      */
-    template<>
-    struct deleter_of<SSL> {
+    template <>
+    struct deleter_of<SSL>
+    {
         void operator()(SSL* p) const { SSL_free(p); }
     };
 
     /**
      * @brief openssl deleter specialization for BIO.
      */
-    template<>
-    struct deleter_of<BIO> {
+    template <>
+    struct deleter_of<BIO>
+    {
         void operator()(BIO* p) const { BIO_free_all(p); }
     };
 
     /**
      * @brief openssl deleter specialization for BIO_METHOD.
      */
-    template<>
-    struct deleter_of<BIO_METHOD> {
+    template <>
+    struct deleter_of<BIO_METHOD>
+    {
         void operator()(BIO_METHOD* p) const { BIO_meth_free(p); }
     };
 
@@ -60,7 +65,7 @@ namespace tavernmx::ssl {
      * @brief Alias for a std::unique_ptr to own one of the openssl pointers.
      * @tparam OpenSSLType the openssl pointer type
      */
-    template<class OpenSSLType>
+    template <class OpenSSLType>
     using ssl_unique_ptr = std::unique_ptr<OpenSSLType, deleter_of<OpenSSLType>>;
 
     /**
@@ -70,7 +75,7 @@ namespace tavernmx::ssl {
      * @return the new BIO stack
      */
     inline ssl_unique_ptr<BIO> operator|(ssl_unique_ptr<BIO> lower,
-                                         ssl_unique_ptr<BIO> upper) {
+        ssl_unique_ptr<BIO> upper) {
         BIO_push(upper.get(), lower.release());
         return upper;
     }
@@ -78,20 +83,23 @@ namespace tavernmx::ssl {
     /**
      * @brief Exception representing low-level openssl errors. 
      */
-    class SslError : public std::exception {
+    class SslError : public std::exception
+    {
     public:
         /**
          * @brief Create a new SslError. 
          * @param what description of the error
          */
-        explicit SslError(std::string what) noexcept: what_str{std::move(what)} {
+        explicit SslError(std::string what) noexcept
+            : what_str{ std::move(what) } {
         };
 
         /**
          * @brief Create a new SslError. 
          * @param what description of the error 
          */
-        explicit SslError(const char* what) noexcept: what_str{what} {
+        explicit SslError(const char* what) noexcept
+            : what_str{ what } {
         };
 
 
