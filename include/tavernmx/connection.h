@@ -110,7 +110,7 @@ namespace tavernmx {
             requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>,
                          messaging::MessageBlock>
         void send_message_blocks(Iterator begin, Iterator end) {
-            for (auto it = begin; begin < end; ++it) {
+            for (auto it = begin; it != end; ++it) {
                 this->send_message_block(*it);
             }
         };

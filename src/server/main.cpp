@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "thread-pool/BS_thread_pool.hpp"
 #include "tavernmx/logging.h"
 #include "tavernmx/room.h"
 #include "tavernmx/server.h"
@@ -61,7 +62,7 @@ namespace {
         }
     }
 
-    void client_worker(std::shared_ptr<ClientConnection>&& client) {
+    void client_worker(std::shared_ptr<ClientConnection> client) {
         try {
             // Expect client to send HELLO as the first message
             auto hello = client->wait_for(MessageType::HELLO);
@@ -137,12 +138,17 @@ int main() {
         server_accept_signal.release();
 
         TMX_INFO("Accepting connections ...");
-        std::vector<std::thread> threads{};
+        BS::thread_pool client_thread_pool{static_cast<BS::concurrency_t>(config.max_clients)};
         while (!server_shutdown_signal.try_acquire() && connections->is_accepting_connections()) {
             if (auto client = connections->await_next_connection()) {
-                threads.emplace_back(client_worker, std::move(client.value()));
-
-                // TODO: clean up dead threads
+                TMX_INFO("Running: {} / {}", client_thread_pool.get_tasks_running(), client_thread_pool.get_thread_count());
+                if (client_thread_pool.get_tasks_running() >= client_thread_pool.get_thread_count()) {
+                    TMX_WARN("Too many connections.");
+                    client->get()->shutdown();
+                    std::this_thread::sleep_for(std::chrono::seconds{1});
+                } else {
+                    client_thread_pool.detach_task(std::bind(client_worker, client.value()));
+                }
             }
         }
 

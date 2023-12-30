@@ -3,6 +3,7 @@
   "log_file": "server.log",
   "host_certificate": "server-certificate.pem",
   "host_private_key": "server-private-key.pem",
+  "max_clients": 10,
   "initial_rooms": [
     "general",
     "chat",

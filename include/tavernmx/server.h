@@ -91,6 +91,10 @@ namespace tavernmx::server {
          */
         std::string host_private_key_path{};
         /**
+         * @brief Max number of simultaneous client connections to support. Defaults to 10.
+         */
+        std::int32_t max_clients{};
+        /**
          * @brief Set of chat rooms to create at startup.
          */
         std::vector<std::string> initial_rooms{};
