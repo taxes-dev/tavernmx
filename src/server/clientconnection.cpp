@@ -1,7 +1,13 @@
 #include <chrono>
 #include <thread>
-#include <libc.h>
 #include "tavernmx/server.h"
+#include "tavernmx/platform.h"
+
+#ifdef TMX_WINDOWS
+#include <io.h>
+#else
+#include <libc.h>
+#endif
 
 using namespace tavernmx::ssl;
 

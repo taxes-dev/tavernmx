@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "tavernmx/logging.h"
+#include "tavernmx/platform.h"
 #include "tavernmx/room.h"
 #include "tavernmx/server.h"
 
@@ -104,7 +105,9 @@ namespace {
 
 int main() {
     try {
+#ifndef TMX_WINDOWS
         std::signal(SIGPIPE, SIG_IGN);
+#endif
 
         tavernmx::configure_logging(spdlog::level::warn, {});
         TMX_INFO("Loading configuration ...");

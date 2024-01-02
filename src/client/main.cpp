@@ -9,6 +9,7 @@
 #include <SDL.h>
 #include "tavernmx/client.h"
 #include "tavernmx/client-ui.h"
+#include "tavernmx/platform.h"
 
 using namespace tavernmx::client;
 using namespace tavernmx::messaging;
@@ -28,12 +29,13 @@ namespace {
     };
 }
 
-int main() {
+int main(int argv, char** argc) {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     std::unique_ptr<ServerConnection> connection{nullptr};
-
+#ifndef TMX_WINDOWS
     std::signal(SIGPIPE, SIG_IGN);
+#endif
 
     try {
         ClientConfiguration config{"client-config.json"};

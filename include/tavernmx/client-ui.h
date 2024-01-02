@@ -15,7 +15,7 @@ namespace tavernmx::client {
     };
 
     using ClientUiHandler = std::function<void(class ClientUi*)>;
-    using ClientStateBag = std::unordered_map<const char *, std::string>;
+    using ClientStateBag = std::unordered_map<std::string, std::string>;
 
     class ClientUi {
     public:

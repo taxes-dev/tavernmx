@@ -1,4 +1,7 @@
+.vs/
 cmake-build-debug/
+out/
+CMakeSettings.json
 *.pem
 *.log
 *.ini

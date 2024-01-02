@@ -1,10 +1,16 @@
 #include <algorithm>
-#include <arpa/inet.h>
 #include <bit>
 #include <cassert>
 #include <functional>
 #include "nlohmann/json.hpp"
 #include "tavernmx/messaging.h"
+#include "tavernmx/platform.h"
+
+#ifdef TMX_WINDOWS
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
 
 using json = nlohmann::json;
 
@@ -61,7 +67,7 @@ namespace tavernmx::messaging {
             std::copy_n(header_it, sizeof(block.payload_size), std::begin(payload_size_bytes));
             block.payload_size = std::bit_cast<decltype(block.payload_size), decltype(payload_size_bytes)>(
                 payload_size_bytes);
-            block.payload_size = ntohl(block.payload_size);
+            block.payload_size = htonl(block.payload_size);
             header_it += sizeof(block.payload_size);
             // reserve and read as many bytes into the payload as possible
             block.payload.reserve(block.payload_size);
@@ -83,7 +89,7 @@ namespace tavernmx::messaging {
         block_data.insert(std::end(block_data), std::cbegin(block.HEADER), std::cend(block.HEADER));
         const auto payload_size_bytes = std::bit_cast<std::array<CharType, sizeof(block.payload_size)>, decltype(
             block.payload_size)>(
-            htonl(block.payload_size));
+            ntohl(block.payload_size));
         block_data.insert(std::end(block_data), std::cbegin(payload_size_bytes), std::cend(payload_size_bytes));
         block_data.insert(std::end(block_data), std::cbegin(block.payload), std::cend(block.payload));
         return block_data;
