@@ -7,7 +7,8 @@ using namespace std::string_literals;
 
 #define RESIZE_COND_FLAGS (this->viewport_resized ? ImGuiCond_Always : ImGuiCond_Appearing)
 
-namespace tavernmx::client {
+namespace tavernmx::client
+{
     void ClientUi::add_handler(ClientUiMessage message, ClientUiHandler&& handler) {
         this->handlers.insert_or_assign(message, std::move(handler));
     }
@@ -27,20 +28,20 @@ namespace tavernmx::client {
     void ClientUi::render() {
         // call state-specific rendering
         switch (this->state) {
-            case ClientUiState::Connect:
-                this->render_connect();
-                break;
+        case ClientUiState::Connect:
+            this->render_connect();
+            break;
 
-            case ClientUiState::Connecting:
-                this->render_connecting();
-                break;
+        case ClientUiState::Connecting:
+            this->render_connecting();
+            break;
 
-            case ClientUiState::ChatWindow:
-                this->render_chat_window();
-                break;
+        case ClientUiState::ChatWindow:
+            this->render_chat_window();
+            break;
 
-            default:
-                assert(false && "Unhandled UI state");
+        default:
+            assert(false && "Unhandled UI state");
         }
 
         // check for any errors to display
@@ -54,25 +55,25 @@ namespace tavernmx::client {
 
     ClientUiState ClientUi::set_state(const ClientUiState& new_state) noexcept {
         switch (this->state) {
-            case ClientUiState::Connect:
-                if (new_state == ClientUiState::Connecting) {
-                    this->state = ClientUiState::Connecting;
-                }
-                break;
-            case ClientUiState::Connecting:
-                if (new_state == ClientUiState::Connect || new_state == ClientUiState::ChatWindow) {
-                    this->state = new_state;
-                }
-                break;
-            default:
-                assert(false && "Unhandled UI state");
+        case ClientUiState::Connect:
+            if (new_state == ClientUiState::Connecting) {
+                this->state = ClientUiState::Connecting;
+            }
+            break;
+        case ClientUiState::Connecting:
+            if (new_state == ClientUiState::Connect || new_state == ClientUiState::ChatWindow) {
+                this->state = new_state;
+            }
+            break;
+        default:
+            assert(false && "Unhandled UI state");
         }
         return this->state;
     }
 
     void ClientUi::window_center() {
         const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, RESIZE_COND_FLAGS, ImVec2{0.5f, 0.5f});
+        ImGui::SetNextWindowPos(center, RESIZE_COND_FLAGS, ImVec2{ 0.5f, 0.5f });
     }
 
     void ClientUi::window_size(float rel_w, float rel_h) {
@@ -99,7 +100,7 @@ namespace tavernmx::client {
         this->window_size(0.33f);
         this->window_center();
         ImGui::Begin("Connect to server ...", nullptr,
-                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         ImGui::Text("User name:");
         ImGui::SameLine();
         if (ImGui::InputText("##user", &state_bag["user"], ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -113,7 +114,7 @@ namespace tavernmx::client {
         ImGui::Text("Port:");
         ImGui::SameLine();
         if (ImGui::InputText("##port", &state_bag["port"],
-                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
+            ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
             this->call_handler(ClientUiMessage::Connect_ConnectButton);
         }
 
@@ -127,8 +128,8 @@ namespace tavernmx::client {
         this->window_size(0.2f);
         this->window_center();
         ImGui::Begin("Connecting ...", nullptr,
-                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                     ImGuiWindowFlags_NoTitleBar);
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoTitleBar);
         ImGui::Text("Connecting ...");
         ImGui::BeginDisabled(!((*this)[ClientUiState::Connecting]["cancelled"].empty()));
         if (ImGui::Button("Cancel")) {
@@ -151,9 +152,9 @@ namespace tavernmx::client {
     void ClientUi::render_error() {
         this->window_size(0.25f);
         const ImVec2 viewport = ImGui::GetMainViewport()->Size;
-        ImGui::SetNextWindowPos(ImVec2{20.0f, viewport.y - 20.0f}, RESIZE_COND_FLAGS, ImVec2{0.0f, 1.0f});
+        ImGui::SetNextWindowPos(ImVec2{ 20.0f, viewport.y - 20.0f }, RESIZE_COND_FLAGS, ImVec2{ 0.0f, 1.0f });
         ImGui::Begin("Error!", nullptr,
-                     ImGuiWindowFlags_NoCollapse);
+            ImGuiWindowFlags_NoCollapse);
         ImGui::Text("%s", this->current_error.c_str());
         if (ImGui::Button("OK")) {
             this->current_error.clear();

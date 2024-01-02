@@ -2,14 +2,17 @@
 #include <functional>
 #include <unordered_map>
 
-namespace tavernmx::client {
-    enum class ClientUiState {
+namespace tavernmx::client
+{
+    enum class ClientUiState
+    {
         Connect,
         Connecting,
         ChatWindow
     };
 
-    enum class ClientUiMessage : int32_t {
+    enum class ClientUiMessage : int32_t
+    {
         Connect_ConnectButton,
         Connecting_CancelButton
     };
@@ -17,7 +20,8 @@ namespace tavernmx::client {
     using ClientUiHandler = std::function<void(class ClientUi*)>;
     using ClientStateBag = std::unordered_map<std::string, std::string>;
 
-    class ClientUi {
+    class ClientUi
+    {
     public:
         ClientUi() noexcept = default;
 
@@ -37,21 +41,21 @@ namespace tavernmx::client {
 
         ClientStateBag& operator[](const ClientUiState& state) {
             if (!this->state_bag.contains(state)) {
-                state_bag.insert({state, ClientStateBag{}});
+                state_bag.insert({ state, ClientStateBag{} });
             }
             return this->state_bag[state];
         }
 
         const ClientStateBag& operator[](const ClientUiState& state) const {
             if (!this->state_bag.contains(state)) {
-                state_bag.insert({state, ClientStateBag{}});
+                state_bag.insert({ state, ClientStateBag{} });
             }
             return this->state_bag[state];
         }
 
     private:
-        ClientUiState state{ClientUiState::Connect};
-        bool viewport_resized{false};
+        ClientUiState state{ ClientUiState::Connect };
+        bool viewport_resized{ false };
         std::unordered_map<ClientUiMessage, ClientUiHandler> handlers{};
         mutable std::unordered_map<ClientUiState, ClientStateBag> state_bag{};
         std::string current_error{};

@@ -16,7 +16,8 @@
 // TMX_ERR(fmt, args...) - Shorthand for error-level log
 #define TMX_ERR(...) ::tavernmx::log_error(__VA_ARGS__)
 
-namespace tavernmx {
+namespace tavernmx
+{
     void configure_logging(spdlog::level::level_enum level, const std::optional<std::string>& log_file);
 
     std::vector<std::shared_ptr<spdlog::logger>>& get_loggers();
@@ -27,7 +28,7 @@ namespace tavernmx {
     * @param msg is the message
     */
     inline void log_info(const char* msg) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->info(msg);
         }
     }
@@ -38,9 +39,9 @@ namespace tavernmx {
     * @param fmt is the message
     * @param args are one or more arguments to interpolate into \p fmt
     */
-    template<typename... Args>
+    template <typename... Args>
     void log_info(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->info(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }
@@ -51,7 +52,7 @@ namespace tavernmx {
     * @param msg is the message
     */
     inline void log_warn(const char* msg) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->warn(msg);
         }
     }
@@ -62,9 +63,9 @@ namespace tavernmx {
     * @param fmt is the message
     * @param args are one or more arguments to interpolate into \p fmt
     */
-    template<typename... Args>
+    template <typename... Args>
     void log_warn(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->warn(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }
@@ -75,7 +76,7 @@ namespace tavernmx {
     * @param msg is the message
     */
     inline void log_error(const char* msg) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->error(msg);
         }
     }
@@ -86,9 +87,9 @@ namespace tavernmx {
     * @param fmt is the message
     * @param args are one or more arguments to interpolate into \p fmt
     */
-    template<typename... Args>
+    template <typename... Args>
     void log_error(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger: get_loggers()) {
+        for (auto& logger : get_loggers()) {
             logger->error(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }

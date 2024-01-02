@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "thread-pool/BS_thread_pool.hpp"
 #include "tavernmx/logging.h"
 #include "tavernmx/platform.h"
 #include "tavernmx/room.h"
@@ -15,13 +16,14 @@ using namespace tavernmx::rooms;
 using namespace tavernmx::server;
 using namespace std::string_literals;
 
-namespace {
+namespace
+{
     /// Signals that the server work thread is ready to receive data.
-    std::binary_semaphore server_ready_signal{0};
+    std::binary_semaphore server_ready_signal{ 0 };
     /// Signals that the main server thread has started accepting TLS connections.
-    std::binary_semaphore server_accept_signal{0};
+    std::binary_semaphore server_accept_signal{ 0 };
     /// Signals that the server work thread would like the main server thread to shutdown.
-    std::binary_semaphore server_shutdown_signal{0};
+    std::binary_semaphore server_shutdown_signal{ 0 };
 
     void server_worker(const ServerConfiguration& config, std::shared_ptr<ClientConnectionManager> connections) {
         try {
@@ -29,7 +31,7 @@ namespace {
             TMX_INFO("Server worker starting.");
 
             TMX_INFO("Creating initial rooms ...");
-            for (auto& room_name: config.initial_rooms) {
+            for (auto& room_name : config.initial_rooms) {
                 TMX_INFO("#{}", room_name);
                 rooms.create_room(room_name);
             }
@@ -46,12 +48,12 @@ namespace {
                 // Step 1b. Distribute events to appropriate rooms
                 // Step 2a. Gather events from rooms
                 // Step 2b. Distribute to clients in those rooms
-                for (auto& client: clients) {
+                for (auto& client : clients) {
                     client->messages_out.push(create_ack());
                 }
                 // Step 3. Clean up
                 // Step 4. Sleep
-                std::this_thread::sleep_for(std::chrono::milliseconds{100ll});
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 100ll });
             }
 
             TMX_INFO("Server worker exiting.");
@@ -62,7 +64,7 @@ namespace {
         }
     }
 
-    void client_worker(std::shared_ptr<ClientConnection>&& client) {
+    void client_worker(std::shared_ptr<ClientConnection> client) {
         try {
             // Expect client to send HELLO as the first message
             auto hello = client->wait_for(MessageType::HELLO);
@@ -79,7 +81,7 @@ namespace {
                 // 1. Read waiting messages on socket
                 if (auto block = client->receive_message()) {
                     TMX_INFO("Receive message block: {} bytes", block->payload_size);
-                    for (auto& msg: unpack_messages(block.value())) {
+                    for (auto& msg : unpack_messages(block.value())) {
                         TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
                         client->messages_in.push(std::move(msg));
                     };
@@ -94,7 +96,7 @@ namespace {
                 client->send_messages(std::cbegin(send_messages), std::cend(send_messages));
 
                 // 3. Sleep
-                std::this_thread::sleep_for(std::chrono::milliseconds{100ll});
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 100ll });
             }
             TMX_INFO("Client worker exiting.");
         } catch (const std::exception& ex) {
@@ -111,7 +113,7 @@ int main() {
 
         tavernmx::configure_logging(spdlog::level::warn, {});
         TMX_INFO("Loading configuration ...");
-        const ServerConfiguration config{"server-config.json"};
+        const ServerConfiguration config{ "server-config.json" };
         const spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
         std::optional<std::string> log_file{};
         if (!config.log_file.empty()) {
@@ -133,19 +135,25 @@ int main() {
         std::signal(SIGINT, [](int32_t) { sigint_handler(); });
 
         // start server worker & wait for it to be ready
-        std::thread server_thread{server_worker, config, connections};
+        std::thread server_thread{ server_worker, config, connections };
         server_ready_signal.acquire();
 
         connections->begin_accept();
         server_accept_signal.release();
 
         TMX_INFO("Accepting connections ...");
-        std::vector<std::thread> threads{};
+        BS::thread_pool client_thread_pool{ static_cast<BS::concurrency_t>(config.max_clients) };
         while (!server_shutdown_signal.try_acquire() && connections->is_accepting_connections()) {
             if (auto client = connections->await_next_connection()) {
-                threads.emplace_back(client_worker, std::move(client.value()));
-
-                // TODO: clean up dead threads
+                TMX_INFO("Running: {} / {}", client_thread_pool.get_tasks_running(),
+                    client_thread_pool.get_thread_count());
+                if (client_thread_pool.get_tasks_running() >= client_thread_pool.get_thread_count()) {
+                    TMX_WARN("Too many connections.");
+                    client->get()->shutdown();
+                    std::this_thread::sleep_for(std::chrono::seconds{ 1 });
+                } else {
+                    client_thread_pool.detach_task(std::bind(client_worker, client.value()));
+                }
             }
         }
 

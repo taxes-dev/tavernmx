@@ -11,22 +11,24 @@
 
 using namespace tavernmx::ssl;
 
-namespace {
+namespace
+{
     tavernmx::server::ServerError ssl_errors_to_exception(const char* message) {
         char buffer[256];
-        std::string msg{message};
+        std::string msg{ message };
         while (const unsigned long err = ERR_get_error() != 0) {
             ERR_error_string_n(err, buffer, sizeof(buffer));
             msg += ", ";
             msg += buffer;
         }
-        return tavernmx::server::ServerError{msg};
+        return tavernmx::server::ServerError{ msg };
     }
 }
 
-namespace tavernmx::server {
+namespace tavernmx::server
+{
     ClientConnectionManager::ClientConnectionManager(int32_t accept_port)
-        : accept_port{accept_port} {
+        : accept_port{ accept_port } {
         SSL_load_error_strings();
         this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_method()));
         SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);
@@ -64,7 +66,7 @@ namespace tavernmx::server {
 
         auto bio = accept_new_tcp_connection(this->accept_bio.get());
         if (bio == nullptr) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
+            std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
             return {};
         }
         bio = std::move(bio)
@@ -72,9 +74,8 @@ namespace tavernmx::server {
 
         this->cleanup_connections();
 
-        auto connection = std::make_shared<ClientConnection>(std::move(bio));
-        {
-            std::lock_guard guard{this->active_connections_mutex};
+        auto connection = std::make_shared<ClientConnection>(std::move(bio)); {
+            std::lock_guard guard{ this->active_connections_mutex };
 
             this->active_connections.push_back(connection);
         }
@@ -82,8 +83,8 @@ namespace tavernmx::server {
     }
 
     void ClientConnectionManager::shutdown() noexcept {
-        std::lock_guard guard{this->active_connections_mutex};
-        for (auto& connection: this->active_connections) {
+        std::lock_guard guard{ this->active_connections_mutex };
+        for (auto& connection : this->active_connections) {
             connection->shutdown();
         }
         this->active_connections.clear();
@@ -95,7 +96,7 @@ namespace tavernmx::server {
     }
 
     std::vector<std::shared_ptr<ClientConnection>> ClientConnectionManager::get_active_connections() {
-        std::lock_guard guard{this->active_connections_mutex};
+        std::lock_guard guard{ this->active_connections_mutex };
         // copy is intentional here
         return this->active_connections;
     }
@@ -105,7 +106,7 @@ namespace tavernmx::server {
     }
 
     void ClientConnectionManager::cleanup_connections() {
-        std::lock_guard guard{this->active_connections_mutex};
+        std::lock_guard guard{ this->active_connections_mutex };
         std::erase_if(this->active_connections, [](const std::shared_ptr<ClientConnection>& connection) {
             return !connection->is_connected();
         });

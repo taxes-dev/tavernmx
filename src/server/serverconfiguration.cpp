@@ -5,11 +5,12 @@
 using json = nlohmann::json;
 using namespace std::string_literals;
 
-namespace tavernmx::server {
-    ServerConfiguration::ServerConfiguration(const std::string &config_path) {
-        std::ifstream config_file{config_path};
+namespace tavernmx::server
+{
+    ServerConfiguration::ServerConfiguration(const std::string& config_path) {
+        std::ifstream config_file{ config_path };
         if (!config_file.good()) {
-            throw ServerError{"Unable to open config file"};
+            throw ServerError{ "Unable to open config file" };
         }
         try {
             auto config_data = json::parse(config_file);
@@ -17,21 +18,21 @@ namespace tavernmx::server {
             this->log_level = config_data.value("log_level", "warn"s);
             this->log_file = config_data.value("log_file", ""s);
             if (!config_data["host_certificate"].is_string()) {
-                throw ServerError{"host_certificate is required"};
+                throw ServerError{ "host_certificate is required" };
             }
             this->host_certificate_path = config_data["host_certificate"];
             if (!config_data["host_private_key"].is_string()) {
-                throw ServerError{"host_private_key is required"};
+                throw ServerError{ "host_private_key is required" };
             }
             this->host_private_key_path = config_data["host_private_key"];
+            this->max_clients = config_data.value("max_clients", 10);
             if (config_data["initial_rooms"].is_array()) {
-                for (auto & room: config_data["initial_rooms"].items()) {
+                for (auto& room : config_data["initial_rooms"].items()) {
                     this->initial_rooms.push_back(room.value());
                 }
             }
-        }
-        catch (json::parse_error &ex) {
-            throw ServerError{"Unable to parse config file", ex};
+        } catch (json::parse_error& ex) {
+            throw ServerError{ "Unable to parse config file", ex };
         }
     }
 

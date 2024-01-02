@@ -11,7 +11,8 @@
 using namespace tavernmx::messaging;
 using namespace std::string_literals;
 
-namespace {
+namespace
+{
     // receive buffer size here roughly matches typical ethernet MTU
     constexpr size_t BUFFER_SIZE = 1500;
 
@@ -21,14 +22,14 @@ namespace {
      * @return tavernmx::ssl::SslError
      */
     tavernmx::ssl::SslError ssl_errors_to_exception(const char* message) {
-        std::string msg{message};
+        std::string msg{ message };
         while (const unsigned long err = ERR_get_error() != 0) {
             char buffer[256];
             ERR_error_string_n(err, buffer, sizeof(buffer));
             msg += ", "s;
             msg += buffer;
         }
-        return tavernmx::ssl::SslError{msg};
+        return tavernmx::ssl::SslError{ msg };
     }
 
     /**
@@ -59,12 +60,13 @@ namespace {
     }
 }
 
-namespace tavernmx::ssl {
+namespace tavernmx::ssl
+{
     void send_message(BIO* bio, const MessageBlock& block) {
         const std::vector<CharType> block_data = pack_block(block);
         while (BIO_write(bio, block_data.data(), static_cast<int32_t>(block_data.size())) < 0) {
             if (BIO_should_retry(bio)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
+                std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
                 continue;
             }
             throw ssl_errors_to_exception("send_message BIO_write failed");
@@ -77,15 +79,15 @@ namespace tavernmx::ssl {
         CharType buffer[BUFFER_SIZE];
         size_t rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
         if (rcvd == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{SSL_RETRY_MILLISECONDS});
+            std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
             return {};
         }
 
         MessageBlock block{};
-        size_t applied = apply_buffer_to_block(std::span{buffer, rcvd}, block);
+        size_t applied = apply_buffer_to_block(std::span{ buffer, rcvd }, block);
         while (applied > 0 && applied < block.payload_size) {
             rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
-            applied += apply_buffer_to_block(std::span{buffer, rcvd}, block, applied);
+            applied += apply_buffer_to_block(std::span{ buffer, rcvd }, block, applied);
         }
 
         if (block.payload_size == 0) {
@@ -115,18 +117,18 @@ namespace tavernmx::ssl {
         if (err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN || err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
             if (!allow_self_signed) {
                 const char* msg = X509_verify_cert_error_string(err);
-                throw SslError{msg};
+                throw SslError{ msg };
             }
         } else if (err != X509_V_OK) {
             const char* msg = X509_verify_cert_error_string(err);
-            throw SslError{msg};
+            throw SslError{ msg };
         }
         X509* cert = SSL_get_peer_certificate(ssl);
         if (cert == nullptr) {
-            throw SslError{"SSL_get_peer_certificate: No certificate was presented by the server"};
+            throw SslError{ "SSL_get_peer_certificate: No certificate was presented by the server" };
         }
         if (X509_check_host(cert, expected_hostname.data(), expected_hostname.size(), 0, nullptr) != 1) {
-            throw SslError{"X509_check_host: Hostname mismatch"};
+            throw SslError{ "X509_check_host: Hostname mismatch" };
         }
     }
 
