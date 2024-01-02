@@ -4,3 +4,6 @@ target_link_libraries(tavernmx-client PRIVATE tavernmx-shared imgui::imgui nlohm
 target_include_directories(tavernmx-client PRIVATE
         "${PROJECT_SOURCE_DIR}/include")
 add_dependencies(tavernmx-client tavernmx-shared)
+if(WIN32)
+target_link_libraries(tavernmx-shared PRIVATE ws2_32)
+endif()

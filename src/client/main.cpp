@@ -86,9 +86,9 @@ int main(int argv, char** argc) {
         setup_handlers(ui);
 
         // insert initial state
-        ui[ClientUiState::Connect]["user"] = generate_random_username();
-        ui[ClientUiState::Connect]["host"] = config.host_name;
-        ui[ClientUiState::Connect]["port"] = std::to_string(config.host_port);
+        ui[ClientUiState::Connect]["user"s] = generate_random_username();
+        ui[ClientUiState::Connect]["host"s] = config.host_name;
+        ui[ClientUiState::Connect]["port"s] = std::to_string(config.host_port);
 
         // Main loop
         while (!done) {
@@ -118,9 +118,9 @@ int main(int argv, char** argc) {
             } else if (ui.get_state() == ClientUiState::Connecting && !connection) {
                 // Start trying to connect
                 try {
-                    std::string user_name = ui[ClientUiState::Connect]["user"];
-                    std::string host_name = ui[ClientUiState::Connect]["host"];
-                    int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"]);
+                    std::string user_name = ui[ClientUiState::Connect]["user"s];
+                    std::string host_name = ui[ClientUiState::Connect]["host"s];
+                    int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"s]);
                     TMX_INFO("Connecting to {}:{} ...", host_name, host_port);
                     connection = std::make_unique<ServerConnection>(host_name, host_port);
                     for (auto& cert : config.custom_certificates) {
@@ -157,12 +157,12 @@ int main(int argv, char** argc) {
             } else if (ui.get_state() == ClientUiState::Connecting) {
                 // Poll to see if connection attempt is resolved
                 if (thread_signal.try_acquire()) {
-                    if (!ui[ClientUiState::Connecting]["cancelled"].empty()) {
+                    if (!ui[ClientUiState::Connecting]["cancelled"s].empty()) {
                         connection.reset();
                         ui.set_error("Connection cancelled."s);
                         ui.set_state(ClientUiState::Connect);
                     } else if (connection->is_connected()) {
-                        ui[ClientUiState::ChatWindow]["host"] = connection->get_host_name();
+                        ui[ClientUiState::ChatWindow]["host"s] = connection->get_host_name();
                         ui.set_state(ClientUiState::ChatWindow);
                     } else {
                         connection.reset();
@@ -222,12 +222,12 @@ namespace
     void connect_connectbutton(ClientUi* ui) {
         TMX_INFO("Connect button pressed.");
         ui->set_state(ClientUiState::Connecting);
-        (*ui)[ClientUiState::Connecting]["cancelled"] = ""s;
+        (*ui)[ClientUiState::Connecting]["cancelled"s] = ""s;
     }
 
     void connecting_cancelbutton(ClientUi* ui) {
         TMX_INFO("Cancel connecting button pressed.");
-        (*ui)[ClientUiState::Connecting]["cancelled"] = "1"s;
+        (*ui)[ClientUiState::Connecting]["cancelled"s] = "1"s;
     }
 
     void setup_handlers(ClientUi& ui) {
