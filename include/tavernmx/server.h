@@ -3,8 +3,9 @@
 #include <mutex>
 #include <optional>
 #include <string>
-#include "connection.h"
-#include "queue.h"
+#include "shared.h"
+
+using namespace std::string_literals;
 
 namespace tavernmx::server
 {

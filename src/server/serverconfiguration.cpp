@@ -3,7 +3,6 @@
 #include "tavernmx/server.h"
 
 using json = nlohmann::json;
-using namespace std::string_literals;
 
 namespace tavernmx::server
 {

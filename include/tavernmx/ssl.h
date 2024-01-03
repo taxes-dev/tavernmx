@@ -3,7 +3,7 @@
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include "tavernmx/messaging.h"
+#include "messaging.h"
 
 namespace tavernmx::ssl
 {
@@ -12,7 +12,7 @@ namespace tavernmx::ssl
     /// Used by BIO_new_ssl() to indicate a server socket
     constexpr long NEWSSL_SERVER = 0;
     /// Matches the type of std::chrono::milliseconds, min 45 bits
-    using Milliseconds = long long;
+    using Milliseconds = std::chrono::milliseconds::rep;
     /// Number of milliseconds to wait between SSL retries
     constexpr Milliseconds SSL_RETRY_MILLISECONDS = 50;
     /// Number of milliseconds to wait for an expected response

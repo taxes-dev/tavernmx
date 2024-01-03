@@ -6,15 +6,11 @@
 #include <vector>
 
 #include "thread-pool/BS_thread_pool.hpp"
-#include "tavernmx/logging.h"
-#include "tavernmx/platform.h"
-#include "tavernmx/room.h"
 #include "tavernmx/server.h"
 
 using namespace tavernmx::messaging;
 using namespace tavernmx::rooms;
 using namespace tavernmx::server;
-using namespace std::string_literals;
 
 namespace
 {

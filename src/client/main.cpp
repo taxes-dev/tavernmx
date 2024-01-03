@@ -1,6 +1,5 @@
 #include <csignal>
 #include <iostream>
-#include <memory>
 #include <semaphore>
 #include <thread>
 #include <imgui.h>
@@ -9,11 +8,9 @@
 #include <SDL.h>
 #include "tavernmx/client.h"
 #include "tavernmx/client-ui.h"
-#include "tavernmx/platform.h"
 
 using namespace tavernmx::client;
 using namespace tavernmx::messaging;
-using namespace std::string_literals;
 
 namespace
 {

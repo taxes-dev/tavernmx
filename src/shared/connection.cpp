@@ -17,7 +17,7 @@ namespace tavernmx
     }
 
     void BaseConnection::send_message(const Message& message) {
-        auto block = pack_message(message);
+        const auto block = pack_message(message);
         this->send_message_block(block);
     }
 

@@ -1,13 +1,11 @@
 #pragma once
 
-#include <concepts>
 #include <exception>
-#include <iterator>
-#include <optional>
 #include <string>
 #include <vector>
-#include "connection.h"
-#include "logging.h"
+#include "shared.h"
+
+using namespace std::string_literals;
 
 namespace tavernmx::client
 {
