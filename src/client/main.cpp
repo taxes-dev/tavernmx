@@ -19,8 +19,6 @@ namespace
 
     std::binary_semaphore thread_signal{ 0 };
 
-    void setup_handlers(ClientUi&);
-
     std::string generate_random_username() {
         const uint32_t numbers = std::time(nullptr) & 0xfff;
         return "jdoe"s + std::to_string(numbers);
@@ -30,7 +28,7 @@ namespace
 int main(int argv, char** argc) {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-    std::unique_ptr<ServerConnection> connection{nullptr};
+    std::unique_ptr<ServerConnection> connection{ nullptr };
 #ifndef TMX_WINDOWS
     std::signal(SIGPIPE, SIG_IGN);
 #endif
@@ -58,6 +56,7 @@ int main(int argv, char** argc) {
             WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         if (window == nullptr) {
             TMX_ERR("SDL Error creating SDL_Window: {}", SDL_GetError());
+            return 1;
         }
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
         if (renderer == nullptr) {
@@ -79,13 +78,80 @@ int main(int argv, char** argc) {
 
         // setup UI handlers
         bool done = false;
-        ClientUi ui{};
-        setup_handlers(ui);
+        auto client_ui = std::make_shared<ClientUi>();
 
-        // insert initial state
-        ui[ClientUiState::Connect]["user"s] = generate_random_username();
-        ui[ClientUiState::Connect]["host"s] = config.host_name;
-        ui[ClientUiState::Connect]["port"s] = std::to_string(config.host_port);
+        // create initial UI screen
+        auto connect_screen = std::make_unique<ConnectUiScreen>();
+        connect_screen->user_name = generate_random_username();
+        connect_screen->host_name = config.host_name;
+        connect_screen->host_port = std::to_string(config.host_port);
+        connect_screen->add_handler(ConnectUiScreen::MSG_CONNECT_BUTTON,
+            [&connection,&config](ClientUi* ui, ClientUiScreen* screen) {
+                TMX_INFO("Connect button pressed.");
+
+                // setup "Connecting" screen
+                auto connecting_screen = std::make_unique<ConnectingUiScreen>();
+                connecting_screen->add_handler(ConnectingUiScreen::MSG_UPDATE,
+                    [&connection](ClientUi* ui, ClientUiScreen* screen) {
+                        // Poll to see if connection attempt is resolved
+                        if (thread_signal.try_acquire()) {
+                            const auto conn_screen = dynamic_cast<ConnectingUiScreen*>(screen);
+                            ui->pop_screen();
+                            if (conn_screen->is_cancelled()) {
+                                // for simplicity, cancellation is handled here rather
+                                // than trying to abort the connection thread
+                                connection.reset();
+                                ui->set_error("Connection cancelled."s);
+                                TMX_INFO("Connection cancelled by user.");
+                            } else if (connection && connection->is_connected()) {
+                                TMX_INFO("Connected.");
+                                auto chat_screen = std::make_unique<ChatWindowScreen>(connection->get_host_name());
+                                ui->push_screen(std::move(chat_screen));
+                            } else {
+                                ui->set_error("Unable to connect to server."s);
+                                TMX_ERR("Unable to connect to server.");
+                            }
+                        }
+                    });
+                ui->push_screen(std::move(connecting_screen));
+
+                // Start trying to connect
+                try {
+                    const auto conn_screen = dynamic_cast<ConnectUiScreen*>(screen);
+                    const int32_t host_port = std::stoi(conn_screen->host_port);
+                    TMX_INFO("Connecting to {}:{} ...", conn_screen->host_name, host_port);
+                    connection = std::make_unique<ServerConnection>(conn_screen->host_name, host_port);
+                    for (auto& cert : config.custom_certificates) {
+                        connection->load_certificate(cert);
+                    }
+                    // Connect on background thread so it doesn't block UI
+                    std::thread connection_thread{
+                        [&connection, user_name = conn_screen->user_name]() {
+                            try {
+                                connection->connect();
+                                connection->send_message(create_hello(user_name));
+
+                                if (!connection->wait_for(MessageType::ACK)) {
+                                    TMX_ERR("Server did not acknowledge HELLO");
+                                    connection->shutdown();
+                                }
+
+                                thread_signal.release();
+                            } catch (std::exception& ex) {
+                                TMX_ERR("connection_thread error: {}", ex.what());
+                                thread_signal.release();
+                            }
+                        }
+                    };
+                    connection_thread.detach();
+                } catch (std::exception& ex) {
+                    connection.reset();
+                    ui->pop_screen();
+                    ui->set_error(std::string{ ex.what() });
+                }
+
+            });
+        client_ui->push_screen(std::move(connect_screen));
 
         // Main loop
         while (!done) {
@@ -102,78 +168,9 @@ int main(int argv, char** argc) {
                         done = true;
                     }
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                        ui.set_viewport_resized();
+                        client_ui->set_viewport_resized();
                     }
                     break;
-                }
-            }
-
-            // Handle current UI state
-            if (ui.get_state() == ClientUiState::Connect && connection) {
-                // Drop current connection if it exists
-                connection.reset();
-            } else if (ui.get_state() == ClientUiState::Connecting && !connection) {
-                // Start trying to connect
-                try {
-                    std::string user_name = ui[ClientUiState::Connect]["user"s];
-                    std::string host_name = ui[ClientUiState::Connect]["host"s];
-                    int32_t host_port = std::stoi(ui[ClientUiState::Connect]["port"s]);
-                    TMX_INFO("Connecting to {}:{} ...", host_name, host_port);
-                    connection = std::make_unique<ServerConnection>(host_name, host_port);
-                    for (auto& cert : config.custom_certificates) {
-                        connection->load_certificate(cert);
-                    }
-                    // Connect on background thread so it doesn't block UI
-                    std::thread connection_thread{
-                        [&ui, &connection, &user_name]() {
-                            try {
-                                connection->connect();
-                                connection->send_message(create_hello(user_name));
-
-                                if (!connection->wait_for(MessageType::ACK)) {
-                                    TMX_ERR("Server did not acknowledge HELLO");
-                                    connection->shutdown();
-                                }
-
-                                thread_signal.release();
-                            } catch (std::exception& ex) {
-                                TMX_ERR("connection_thread error: {}", ex.what());
-                                connection.reset();
-                                ui.set_state(ClientUiState::Connect);
-                                ui.set_error("Unable to connect: "s + ex.what());
-                                thread_signal.release();
-                            }
-                        }
-                    };
-                    connection_thread.detach();
-                } catch (std::exception& ex) {
-                    ui.set_state(ClientUiState::Connect);
-                    connection.reset();
-                    ui.set_error(std::string{ ex.what() });
-                }
-            } else if (ui.get_state() == ClientUiState::Connecting) {
-                // Poll to see if connection attempt is resolved
-                if (thread_signal.try_acquire()) {
-                    if (!ui[ClientUiState::Connecting]["cancelled"s].empty()) {
-                        connection.reset();
-                        ui.set_error("Connection cancelled."s);
-                        ui.set_state(ClientUiState::Connect);
-                    } else if (connection->is_connected()) {
-                        ui[ClientUiState::ChatWindow]["host"s] = connection->get_host_name();
-                        ui.set_state(ClientUiState::ChatWindow);
-                    } else {
-                        connection.reset();
-                        ui.set_error("Unable to connect to server."s);
-                        ui.set_state(ClientUiState::Connect);
-                    }
-                }
-            } else if (ui.get_state() == ClientUiState::ChatWindow) {
-                // Check for messages
-                if (auto block = connection->receive_message()) {
-                    for (auto& msg : unpack_messages(block.value())) {
-                        TMX_INFO("Received message: {}", static_cast<int32_t>(msg.message_type));
-                        // TODO
-                    }
                 }
             }
 
@@ -186,7 +183,7 @@ int main(int argv, char** argc) {
             bool show_demo_window = true;
             ImGui::ShowDemoWindow(&show_demo_window);
 
-            ui.render();
+            client_ui->render();
 
             // Render and present
             ImGui::Render();
@@ -203,32 +200,10 @@ int main(int argv, char** argc) {
     }
 
     // Shutdown
-    if (renderer) {
-        SDL_DestroyRenderer(renderer);
-    }
-    if (window) {
-        SDL_DestroyWindow(window);
-    }
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     SDL_Quit();
 
     return 0;
 }
 
-namespace
-{
-    void connect_connectbutton(ClientUi* ui) {
-        TMX_INFO("Connect button pressed.");
-        ui->set_state(ClientUiState::Connecting);
-        (*ui)[ClientUiState::Connecting]["cancelled"s] = ""s;
-    }
-
-    void connecting_cancelbutton(ClientUi* ui) {
-        TMX_INFO("Cancel connecting button pressed.");
-        (*ui)[ClientUiState::Connecting]["cancelled"s] = "1"s;
-    }
-
-    void setup_handlers(ClientUi& ui) {
-        ui.add_handler(ClientUiMessage::Connect_ConnectButton, connect_connectbutton);
-        ui.add_handler(ClientUiMessage::Connecting_CancelButton, connecting_cancelbutton);
-    }
-}

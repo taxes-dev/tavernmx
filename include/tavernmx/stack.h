@@ -1,50 +1,49 @@
 #pragma once
 #include <mutex>
 #include <optional>
-#include <queue>
+#include <stack>
 
 namespace tavernmx
 {
     /**
-     * @brief Thread-safe implementation of FIFO data structure. (Wraps std::queue<T, std::dequeue<T>>.)
+     * @brief Thread-safe implementation of LIFO data structure. (Wraps std::stack<T, std::dequeue<T>>.)
      * @tparam T The type of the stored elements.
      * @note All container operations rely on locking a mutex. Copying/moving requires locking
      * on both containers in the operation.
      */
     template <typename T>
-    class ThreadSafeQueue
+    class ThreadSafeStack
     {
-        // Implementation partially based on: https://codetrips.com/2020/07/26/modern-c-writing-a-thread-safe-queue/comment-page-1/
     public:
         /**
          * @brief Creates a new, empty container.
          */
-        ThreadSafeQueue() = default;
+        ThreadSafeStack() = default;
 
-        virtual ~ThreadSafeQueue() = default;
+        virtual ~ThreadSafeStack() = default;
 
-        ThreadSafeQueue(const ThreadSafeQueue& other) noexcept {
+        ThreadSafeStack(const ThreadSafeStack& other) noexcept {
             *this = other;
         }
 
-        ThreadSafeQueue(ThreadSafeQueue&& other) noexcept {
+        ThreadSafeStack(ThreadSafeStack&& other) noexcept {
             *this = std::move(other);
         };
 
-        ThreadSafeQueue& operator=(const ThreadSafeQueue& other) noexcept {
+        ThreadSafeStack& operator=(const ThreadSafeStack& other) noexcept {
             if (this != &other) {
                 std::lock_guard<std::mutex> guard1{ this->_mutex };
                 std::lock_guard<std::mutex> guard2{ other._mutex };
-                this->_queue = other._queue;
+                this->_stack = other._stack;
             }
             return *this;
         }
 
-        ThreadSafeQueue& operator=(ThreadSafeQueue&& other) noexcept {
+        ThreadSafeStack& operator=(ThreadSafeStack&& other) noexcept {
             if (this != &other) {
                 std::lock_guard<std::mutex> guard1{ this->_mutex };
                 std::lock_guard<std::mutex> guard2{ other._mutex };
-                this->_queue = std::move(other._queue);
+                this->_stack = std::move(other._stack);
             }
             return *this;
         };
@@ -58,7 +57,7 @@ namespace tavernmx
         template <class... Args>
         decltype(auto) emplace(Args&&... args) {
             std::lock_guard guard{ this->_mutex };
-            this->_queue.emplace(std::forward<Args...>(args...));
+            this->_stack.emplace(std::forward<Args...>(args...));
         }
 
         /**
@@ -67,58 +66,58 @@ namespace tavernmx
          */
         bool empty() const {
             std::lock_guard guard{ this->_mutex };
-            return this->_queue.empty();
+            return this->_stack.empty();
         }
 
         /**
-         * @brief Returns a reference to the first element in the queue.
-         * @return Reference to the first element.
+         * @brief Returns a reference to the top element in the stack.
+         * @return Reference to the last element.
          */
-        T& front() {
+        T& top() {
             std::lock_guard guard{ this->_mutex };
-            return this->_queue.front();
+            return this->_stack.top();
         }
 
         /**
-         * @brief Returns a const reference to the first element in the queue.
-         * @return Reference to the first element.
+         * @brief Returns a const reference to the top element in the stack.
+         * @return Reference to the last element.
          */
-        const T& front() const {
+        const T& top() const {
             std::lock_guard guard{ this->_mutex };
-            return this->_queue.front();
+            return this->_stack.top();
         }
 
         /**
-         * @brief Removes an element from the front of the queue, if possible, and returns it.
-         * @return A std::optional<T> containing the element popped off the queue, or nothing
+         * @brief Removes the top element from the stack, if possible, and returns it.
+         * @return A std::optional<T> containing the element popped off the stack, or nothing
          * if the underlying container is empty.
          */
         std::optional<T> pop() {
             std::lock_guard guard{ this->_mutex };
-            if (this->_queue.empty()) {
+            if (this->_stack.empty()) {
                 return {};
             }
-            T returned = std::move(this->_queue.front());
-            this->_queue.pop();
+            T returned = std::move(this->_stack.top());
+            this->_stack.pop();
             return returned;
         }
 
         /**
-         * @brief Pushes the given element \p item to the end of the queue.
+         * @brief Pushes the given element \p item to the top of the stack.
          * @param item The value of the element to push.
          */
         void push(const T& item) {
             std::lock_guard guard{ this->_mutex };
-            this->_queue.push(item);
+            this->_stack.push(item);
         }
 
         /**
-         * @brief Pushes the given element \p item to the end of the queue.
+         * @brief Pushes the given element \p item to the top of the stack.
          * @param item The value of the element to push.
          */
         void push(T&& item) {
             std::lock_guard guard{ this->_mutex };
-            this->_queue.push(std::move(item));
+            this->_stack.push(std::move(item));
         }
 
         /**
@@ -127,11 +126,11 @@ namespace tavernmx
          */
         size_t size() const {
             std::lock_guard guard{ this->_mutex };
-            return this->_queue.size();
+            return this->_stack.size();
         }
 
     private:
         mutable std::mutex _mutex{};
-        std::queue<T> _queue{};
+        std::stack<T> _stack{};
     };
 }
