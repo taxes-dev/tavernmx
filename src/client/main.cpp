@@ -1,4 +1,5 @@
 #include <csignal>
+#include <future>
 #include <iostream>
 #include <semaphore>
 #include <thread>
@@ -14,16 +15,27 @@ using namespace tavernmx::messaging;
 
 namespace
 {
+    /// Initial pixel width of the main window.
     constexpr int32_t WIN_WIDTH = 1280;
+    /// Initial pixel height of the main window.
     constexpr int32_t WIN_HEIGHT = 720;
 
-    std::binary_semaphore thread_signal{ 0 };
+    /// Signals that the attempt to connect has been completed.
+    std::binary_semaphore connect_thread_signal{ 0 };
+    /// Error message from the connection thread.
+    std::string connect_thread_error{};
 
+    /// Generates a random username for ease of use.
     std::string generate_random_username() {
         const uint32_t numbers = std::time(nullptr) & 0xfff;
         return "jdoe"s + std::to_string(numbers);
     };
 
+    /**
+     * @brief Starts the main chat loop.
+     * @param connection Active connection to the server.
+     * @param screen The UI chat window to attach to.
+     */
     void begin_chat(std::unique_ptr<ServerConnection> connection, ChatWindowScreen* screen);
 }
 
@@ -91,33 +103,6 @@ int main(int argv, char** argc) {
             [&connection,&config](ClientUi* ui, ClientUiScreen* screen) {
                 TMX_INFO("Connect button pressed.");
 
-                // setup "Connecting" screen
-                auto connecting_screen = std::make_unique<ConnectingUiScreen>();
-                connecting_screen->add_handler(ConnectingUiScreen::MSG_UPDATE,
-                    [&connection](ClientUi* ui, ClientUiScreen* screen) {
-                        // Poll to see if connection attempt is resolved
-                        if (thread_signal.try_acquire()) {
-                            const auto conn_screen = dynamic_cast<ConnectingUiScreen*>(screen);
-                            ui->pop_screen();
-                            if (conn_screen->is_cancelled()) {
-                                // for simplicity, cancellation is handled here rather
-                                // than trying to abort the connection thread
-                                connection.reset();
-                                ui->set_error("Connection cancelled."s);
-                                TMX_INFO("Connection cancelled by user.");
-                            } else if (connection && connection->is_connected()) {
-                                TMX_INFO("Connected.");
-                                auto chat_screen = std::make_unique<ChatWindowScreen>(connection->get_host_name());
-                                begin_chat(std::move(connection), chat_screen.get());
-                                ui->push_screen(std::move(chat_screen));
-                            } else {
-                                ui->set_error("Unable to connect to server."s);
-                                TMX_ERR("Unable to connect to server.");
-                            }
-                        }
-                    });
-                ui->push_screen(std::move(connecting_screen));
-
                 // Start trying to connect
                 try {
                     const auto conn_screen = dynamic_cast<ConnectUiScreen*>(screen);
@@ -134,22 +119,62 @@ int main(int argv, char** argc) {
                                 connection->connect();
                                 connection->send_message(create_hello(user_name));
 
-                                if (!connection->wait_for(MessageType::ACK)) {
+                                if (auto acknak = connection->wait_for_ack_or_nak()) {
+                                    if (acknak->message_type == MessageType::NAK) {
+                                        auto nakmsg = std::get<std::string>(acknak->values["error"s]);
+                                        TMX_WARN("Server denied request to connect: {}", nakmsg);
+                                        connect_thread_error = std::move(nakmsg);
+                                        connection->shutdown();
+                                    }
+                                } else {
                                     TMX_ERR("Server did not acknowledge HELLO");
                                     connection->shutdown();
                                 }
 
-                                thread_signal.release();
+                                connect_thread_signal.release();
+                                return true;
                             } catch (std::exception& ex) {
                                 TMX_ERR("connection_thread error: {}", ex.what());
-                                thread_signal.release();
+                                connect_thread_signal.release();
+                                return false;
                             }
-                        }
-                    };
+                        }};
                     connection_thread.detach();
+
+                    // setup "Connecting" screen
+                    auto connecting_screen = std::make_unique<ConnectingUiScreen>();
+                    connecting_screen->add_handler(ConnectingUiScreen::MSG_UPDATE,
+                        [&connection](ClientUi* ui,
+                        ClientUiScreen* screen) {
+                            // Poll to see if connection attempt is resolved
+                            if (connect_thread_signal.try_acquire()) {
+                                const auto conn_screen = dynamic_cast<ConnectingUiScreen*>(screen);
+                                ui->pop_screen();
+                                if (conn_screen->is_cancelled()) {
+                                    // for simplicity, cancellation is handled here rather
+                                    // than trying to abort the connection thread
+                                    connection.reset();
+                                    ui->set_error("Connection cancelled."s);
+                                    TMX_INFO("Connection cancelled by user.");
+                                } else if (connection && connection->is_connected()) {
+                                    TMX_INFO("Connected.");
+                                    auto chat_screen = std::make_unique<ChatWindowScreen>(connection->get_host_name());
+                                    begin_chat(std::move(connection), chat_screen.get());
+                                    ui->push_screen(std::move(chat_screen));
+                                } else {
+                                    if (connect_thread_error.empty()) {
+                                        ui->set_error("Unable to connect to server."s);
+                                    } else {
+                                        ui->set_error(connect_thread_error);
+                                        connect_thread_error.clear();
+                                    }
+                                    TMX_ERR("Unable to connect to server.");
+                                }
+                            }
+                        });
+                    ui->push_screen(std::move(connecting_screen));
                 } catch (std::exception& ex) {
                     connection.reset();
-                    ui->pop_screen();
                     ui->set_error(std::string{ ex.what() });
                 }
 
@@ -212,8 +237,11 @@ int main(int argv, char** argc) {
 
 namespace
 {
+    /// If the server hasn't sent anything in this period, send a HEARTBEAT.
     constexpr std::chrono::seconds QUIET_TIMEOUT{ 30ll };
+    /// Signals that the connection to the server has been ended.
     std::binary_semaphore connection_ended_signal{ 0 };
+    /// This flag will be set to let the UI know we're waiting on a response from the server.
     bool waiting_on_server{ false };
 
     void connection_worker(std::unique_ptr<ServerConnection> server) {

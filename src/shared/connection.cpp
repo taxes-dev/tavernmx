@@ -48,7 +48,7 @@ namespace tavernmx
         const auto start = std::chrono::high_resolution_clock::now();
         ssl::Milliseconds elapsed = 0;
 
-        while (elapsed < milliseconds) {
+        do {
             if (auto message_block = this->receive_message()) {
                 auto messages = unpack_messages(message_block.value());
                 for (auto& message : messages) {
@@ -60,8 +60,29 @@ namespace tavernmx
 
             elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::high_resolution_clock::now() - start).count();
-        }
+        } while (elapsed < milliseconds);
 
         return {};
     }
+
+    std::optional<Message> BaseConnection::wait_for_ack_or_nak(ssl::Milliseconds milliseconds) {
+        const auto start = std::chrono::high_resolution_clock::now();
+        ssl::Milliseconds elapsed = 0;
+
+        do {
+            if (auto message_block = this->receive_message()) {
+                auto messages = unpack_messages(message_block.value());
+                for (auto& message : messages) {
+                    if (message.message_type == MessageType::ACK || message.message_type == MessageType::NAK) {
+                        return message;
+                    }
+                }
+            }
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now() - start).count();
+        } while (elapsed < milliseconds);
+
+        return {};
+    }
+
 }

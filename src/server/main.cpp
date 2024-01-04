@@ -63,12 +63,13 @@ namespace
     void client_worker(std::shared_ptr<ClientConnection> client) {
         try {
             // Expect client to send HELLO as the first message
-            auto hello = client->wait_for(MessageType::HELLO);
-            if (hello) {
-                TMX_INFO("Client connected: {}", std::get<std::string>(hello.value().values["user_name"s]));
+            if (auto hello = client->wait_for(MessageType::HELLO)) {
+                client->connected_user_name = std::get<std::string>(hello->values["user_name"s]);
+                TMX_INFO("Client connected: {}", client->connected_user_name);
                 client->send_message(create_ack());
             } else {
                 TMX_INFO("No HELLO sent by client, disconnecting.");
+                TMX_INFO("Client worker exiting.");
                 return;
             }
 

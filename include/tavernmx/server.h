@@ -116,6 +116,7 @@ namespace tavernmx::server
     public:
         ThreadSafeQueue<messaging::Message> messages_in{};
         ThreadSafeQueue<messaging::Message> messages_out{};
+        std::string connected_user_name{};
 
         /**
          * @brief Creates a ClientConnection representing the given \p client_bio.

@@ -136,8 +136,8 @@ namespace tavernmx
         /**
          * @brief Blocks, waiting for a message of type \p message_type.
          * @param message_type tavernmx::messaging::MessageType expected
-         * @param milliseconds maximum number of milliseconds to wait, default is the value of
-         * tavernmx::ssl::SSL_TIMEOUT_MILLISECONDS
+         * @param milliseconds Maximum number of milliseconds to wait, default is the value of
+         * tavernmx::ssl::SSL_TIMEOUT_MILLISECONDS. 0 will check once for waiting messages.
          * @return a tavernmx::messaging::Message if a well-formed message of type
          * \p message_type is received, otherwise empty
          * @note This is used when a certain specific message is expected from the client. Note
@@ -145,6 +145,16 @@ namespace tavernmx
          */
         std::optional<messaging::Message> wait_for(messaging::MessageType message_type,
             ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
+
+        /**
+         * @brief Blocks, waiting for either an ACK or NAK from the connection.
+         * @param milliseconds Maximum number of milliseconds to wait, default is the value of
+         * tavernmx::ssl::SSL_TIMEOUT_MILLISECONDS. 0 will check once for waiting messages.
+         * @return a tavernmx::messaging::Message if a well-formed ACK/NAK is received, otherwise empty
+         * @note This is a specialized form of wait_for(messaging::MessageType, ssl::Milliseconds) that
+         * will block until either an ACK or a NAK is received.
+         */
+        std::optional<messaging::Message> wait_for_ack_or_nak(ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
 
     protected:
         ssl::ssl_unique_ptr<BIO> bio{ nullptr };
