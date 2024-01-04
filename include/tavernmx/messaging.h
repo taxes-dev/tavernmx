@@ -46,6 +46,7 @@ namespace tavernmx::messaging
         HEARTBEAT = 0x2001,
 
         // Room-related messages
+        ROOM_LIST = 0x3000,
     };
 
     /**
@@ -142,6 +143,34 @@ namespace tavernmx::messaging
      */
     inline Message create_heartbeat() {
         return Message{ .message_type = MessageType::HEARTBEAT };
+    }
+
+
+    /**
+     * @brief Create a ROOM_LIST Message struct to request the room list.
+     * @return Message
+     */
+    inline Message create_room_list() {
+        return Message{ .message_type = MessageType::ROOM_LIST };
+    }
+
+    /**
+     * @brief Create a ROOM_LIST Message struct to send the room list.
+     * @tparam Iterator forward iterator of std::string
+     * @param rooms_begin The beginning of the range of room names.
+     * @param rooms_end The end of the range of room names.
+     * @return Message
+     */
+    template <class Iterator>
+        requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>,
+                     std::string>
+    Message create_room_list(Iterator rooms_begin, Iterator rooms_end) {
+        Message message{ .message_type = MessageType::ROOM_LIST };
+        int32_t i = 0;
+        for (auto it = rooms_begin; it < rooms_end; ++it, ++i) {
+            message.values[std::to_string(i)] = *it;
+        }
+        return message;
     }
 
 }

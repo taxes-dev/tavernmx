@@ -138,7 +138,7 @@ int main(int argv, char** argc) {
                                 connect_thread_signal.release();
                                 return false;
                             }
-                        }};
+                        } };
                     connection_thread.detach();
 
                     // setup "Connecting" screen
@@ -249,6 +249,9 @@ namespace
             auto last_message_received = std::chrono::system_clock::now();
             std::optional<std::chrono::time_point<std::chrono::system_clock>> heartbeat_sent{};
 
+            // send initial request for rooms list
+            server->send_message(create_room_list());
+
             while (server->is_connected()) {
                 std::vector<Message> send_messages{};
 
@@ -275,7 +278,6 @@ namespace
                             server->messages_in->push(std::move(msg));
                             break;
                         }
-                        server->messages_in->push(std::move(msg));
                     };
                     last_message_received = std::chrono::system_clock::now();
                     heartbeat_sent.reset();
@@ -332,8 +334,25 @@ namespace
                 // process incoming messages
                 while (auto msg = messages_in->pop()) {
                     TMX_INFO("UI message: {}", static_cast<int32_t>(msg->message_type));
+                    switch (msg->message_type) {
+                    case MessageType::ROOM_LIST:
+                        chat_screen->rooms.clear();
+                        for (auto& [key, value] : msg->values) {
+                            TMX_INFO("Creating room: {}", std::get<std::string>(value));
+                            chat_screen->rooms.create_room(std::get<std::string>(value));
+                        }
+                        chat_screen->rooms_updated();
+                        break;
+                    default:
+                        TMX_WARN("Unhandled UI message type: {}", static_cast<int32_t>(msg->message_type));
+                        break;
+                    }
                 }
             });
+        screen->add_handler(ChatWindowScreen::MSG_ROOM_CHANGED, [](ClientUi*, ClientUiScreen* screen) {
+            auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);
+            TMX_INFO("Chat room changed: {}", chat_screen->current_room_index);
+        });
 
         // push connection to background thread for message handling
         std::thread connection_thread{ connection_worker, std::move(connection) };

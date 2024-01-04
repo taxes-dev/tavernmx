@@ -53,11 +53,16 @@ namespace tavernmx::rooms
         RoomManager& operator=(RoomManager&&) = default;
 
         std::shared_ptr<Room> create_room(const std::string& room_name) {
+            this->_room_names.push_back(room_name);
             return this->active_rooms.emplace_back(std::move(std::make_shared<Room>(room_name)));
         }
 
         const std::vector<std::shared_ptr<Room>>& rooms() const {
             return this->active_rooms;
+        }
+
+        const std::vector<std::string>& room_names() const {
+            return this->_room_names;
         }
 
         std::shared_ptr<Room> operator[](const std::string& room_name) const {
@@ -71,8 +76,17 @@ namespace tavernmx::rooms
             return nullptr;
         }
 
+        void clear() {
+            this->active_rooms.clear();
+            this->_room_names.clear();
+        }
+
+        size_t size() const {
+            return this->active_rooms.size();
+        }
+
     private:
         std::vector<std::shared_ptr<Room>> active_rooms{};
-        std::vector<std::string> room_names{};
+        std::vector<std::string> _room_names{};
     };
 }

@@ -4,6 +4,7 @@
 
 #include "queue.h"
 #include "stack.h"
+#include "room.h"
 
 namespace tavernmx::client
 {
@@ -263,6 +264,16 @@ namespace tavernmx::client
     class ChatWindowScreen : public ClientUiScreen
     {
     public:
+        /// Message issued whenever the user changes the current room.
+        static constexpr ClientUiMessage MSG_ROOM_CHANGED = 1;
+
+        /// Current rooms managed by the chat window.
+        rooms::RoomManager rooms{};
+
+        /// Currently selected room.
+        int32_t current_room_index{0};
+
+        /// If true, show a message that we're waiting on the server and disable chat controls.
         bool waiting_on_server{ false };
 
         /**
@@ -271,7 +282,12 @@ namespace tavernmx::client
          */
         explicit ChatWindowScreen(std::string host_name)
             : host_name{ std::move(host_name) } {
+            this->room_names = new char*[0];
         };
+
+        ~ChatWindowScreen() override {
+            delete[] room_names;
+        }
 
         /**
          * @brief Called when the main UI thread wants to render this screen.
@@ -281,7 +297,15 @@ namespace tavernmx::client
          */
         void render(ClientUi* ui, bool viewport_resized) override;
 
+        /**
+         * @brief This needs to be called after material changes to the rooms collection, typically
+         * after processing a ROOM_LIST message.
+         */
+        void rooms_updated();
+
     private:
         std::string host_name{};
+        char **room_names{nullptr};
+        size_t room_names_size{0};
     };
 }

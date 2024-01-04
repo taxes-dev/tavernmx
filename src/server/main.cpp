@@ -39,8 +39,23 @@ namespace
 
             TMX_INFO("Server work loop starting ...");
             while (connections->is_accepting_connections()) {
+                //auto& active_rooms = rooms.rooms();
                 // Step 1a. Gather all messages from clients
                 auto clients = connections->get_active_connections();
+                for (auto& client : clients) {
+                    while (auto msg = client->messages_in.pop()) {
+                        switch (msg->message_type) {
+                        case MessageType::ROOM_LIST:
+                            // Client requested the room list, send it back
+                            client->messages_out.push(
+                                create_room_list(std::cbegin(rooms.room_names()), std::cend(rooms.room_names()))
+                                );
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
                 // Step 1b. Distribute events to appropriate rooms
                 // Step 2a. Gather events from rooms
                 // Step 2b. Distribute to clients in those rooms
