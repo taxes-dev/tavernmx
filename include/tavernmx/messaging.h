@@ -30,14 +30,22 @@ namespace tavernmx::messaging
      */
     enum class MessageType : int32_t
     {
+        /// Default, not processible
         Invalid = 0,
 
         // Basic messages
+        /// Acknowledged
         ACK = 0x1000,
+        /// Not acknowledged
         NAK = 0x1001,
 
         // Connection-related messages
+        /// Sent by client to server with auth info (can be responded with ACK or NAK)
         HELLO = 0x2000,
+        /// Sent by client or server to check if the other is alive (should be responded with ACK)
+        HEARTBEAT = 0x2001,
+
+        // Room-related messages
     };
 
     /**
@@ -127,4 +135,13 @@ namespace tavernmx::messaging
             .values = { { "user_name", user_name } }
         };
     }
+
+    /**
+     * @brief Create a HEARTBEAT Message struct.
+     * @return Message
+     */
+    inline Message create_heartbeat() {
+        return Message{ .message_type = MessageType::HEARTBEAT };
+    }
+
 }

@@ -99,6 +99,9 @@ namespace tavernmx::client
     class ServerConnection : public BaseConnection
     {
     public:
+        std::shared_ptr<ThreadSafeQueue<messaging::Message>> messages_in;
+        std::shared_ptr<ThreadSafeQueue<messaging::Message>> messages_out;
+
         /**
          * @brief Creates a ServerConnection that will connect to \p host_name on TCP port \p host_port.
          * @param host_name

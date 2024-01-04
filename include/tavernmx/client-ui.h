@@ -263,6 +263,8 @@ namespace tavernmx::client
     class ChatWindowScreen : public ClientUiScreen
     {
     public:
+        bool waiting_on_server{ false };
+
         /**
          * @brief Creates a ChatWindowScreen.
          * @param host_name The currently connected host name, for display purposes only.

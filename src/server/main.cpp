@@ -45,7 +45,7 @@ namespace
                 // Step 2a. Gather events from rooms
                 // Step 2b. Distribute to clients in those rooms
                 for (auto& client : clients) {
-                    client->messages_out.push(create_ack());
+                    //client->messages_out.push(create_ack());
                 }
                 // Step 3. Clean up
                 // Step 4. Sleep
@@ -74,17 +74,35 @@ namespace
 
             // Serialize messages back and forth from client
             while (client->is_connected()) {
+                std::vector<Message> send_messages{};
+
                 // 1. Read waiting messages on socket
                 if (auto block = client->receive_message()) {
                     TMX_INFO("Receive message block: {} bytes", block->payload_size);
                     for (auto& msg : unpack_messages(block.value())) {
                         TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
-                        client->messages_in.push(std::move(msg));
+                        switch (msg.message_type) {
+                        case MessageType::HEARTBEAT:
+                            // if client requests a HEARTBEAT, we can respond immediately
+                            send_messages.push_back(create_ack());
+                            break;
+                        case MessageType::ACK:
+                        case MessageType::NAK:
+                            // outside of connection handshake, ACK/NAK can be ignored
+                            break;
+                        case MessageType::Invalid:
+                            // programming error?
+                            assert(false && "Received Invalid message type");
+                            break;
+                        default:
+                            // anything else, queue it for processing
+                            client->messages_in.push(std::move(msg));
+                            break;
+                        }
                     };
                 }
 
                 // 2. Send queued messages to socket
-                std::vector<Message> send_messages{};
                 while (auto msg = client->messages_out.pop()) {
                     TMX_INFO("Send message: {}", static_cast<int32_t>(msg->message_type));
                     send_messages.push_back(std::move(msg.value()));
