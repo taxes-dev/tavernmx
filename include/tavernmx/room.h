@@ -1,29 +1,44 @@
 #pragma once
+#include <algorithm>
 #include <chrono>
+#include <concepts>
 #include <memory>
 #include <string>
 #include <vector>
-#include "queue.h"
 
 namespace tavernmx::rooms
 {
+    /// Time stamp type for room events.
     using EventTimeStamp = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
 
+    /**
+     * @brief Describes an individual event that occurred in a chat room.
+     */
     struct RoomEvent
     {
+        /// Timestamp of the event.
         EventTimeStamp timestamp{ time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()) };
+        /// The user that originated the event, if any.
         std::string origin_user_name{};
+        /// Event text to be displayed, if any.
         std::string event_text{};
     };
 
+    /**
+     * @brief Base class for chat rooms.
+     */
     class Room
     {
     public:
-        ThreadSafeQueue<RoomEvent> events{};
-
+        /**
+         * @brief Create a Room.
+         * @param room_name The room's unique name.
+         */
         explicit Room(std::string room_name)
             : _room_name{ std::move(room_name) } {
         };
+
+        virtual ~Room() = default;
 
         Room(const Room&) = delete;
 
@@ -33,15 +48,41 @@ namespace tavernmx::rooms
 
         Room& operator=(Room&&) = default;
 
+        /**
+         * @brief Get the room's name.
+         * @return std::string
+         */
         const std::string& room_name() const { return this->_room_name; };
 
     private:
         std::string _room_name{};
     };
 
+    /**
+     * @brief Concept describing classes which derive from Room so they can be used with
+     * the RoomManager.
+     * @tparam TRoom derived type
+     */
+    template <typename TRoom>
+    concept IsRoom = requires(std::string room_name)
+    {
+        std::derived_from<TRoom, Room>;
+        std::move_constructible<TRoom>;
+        TRoom(room_name);
+    };
+
+    /**
+     * @brief Manages a set of chat rooms.
+     * @tparam T Type derived from Room and constrained by IsRoom<T>.
+     */
+    template <typename T>
+        requires IsRoom<T>
     class RoomManager
     {
     public:
+        /**
+         * @brief Creates a RoomManager.
+         */
         RoomManager() = default;
 
         RoomManager(const RoomManager&) = delete;
@@ -52,22 +93,46 @@ namespace tavernmx::rooms
 
         RoomManager& operator=(RoomManager&&) = default;
 
-        std::shared_ptr<Room> create_room(const std::string& room_name) {
+        /**
+         * @brief Creates a new room with name \p room_name and adds it to this manager.
+         * @param room_name The unique room name to use.
+         * @return A std::shared_ptr<T> if the room was created, otherwise nullptr.
+         * @note \p room_name must be unique to other rooms currently owned by the
+         * RoomManager.
+         */
+        std::shared_ptr<T> create_room(const std::string& room_name) {
+            if (std::find(std::cbegin(this->_room_names), std::cend(this->_room_names), room_name) !=
+                std::cend(this->_room_names)) {
+                return nullptr;
+            }
             this->_room_names.push_back(room_name);
-            return this->active_rooms.emplace_back(std::move(std::make_shared<Room>(room_name)));
+            return this->active_rooms.emplace_back(std::move(std::make_shared<T>(room_name)));
         }
 
-        const std::vector<std::shared_ptr<Room>>& rooms() const {
+        /**
+         * @brief Get the current set of active rooms.
+         * @return std::vector<std::shared_ptr<T>>
+         */
+        const std::vector<std::shared_ptr<T>>& rooms() const {
             return this->active_rooms;
         }
 
+        /**
+         * @brief Get the current set of active room names.
+         * @return std::vector<std::string>
+         */
         const std::vector<std::string>& room_names() const {
             return this->_room_names;
         }
 
-        std::shared_ptr<Room> operator[](const std::string& room_name) const {
+        /**
+         * @brief Attempt to retrieve a specific chat room by name.
+         * @param room_name The unique name of the chat room.
+         * @return A std::shared_ptr<T> if the room is found, otherwise nullptr.
+         */
+        std::shared_ptr<T> operator[](const std::string& room_name) const {
             auto it = std::find_if(std::cbegin(this->active_rooms), std::cend(this->active_rooms),
-                [&room_name](const std::shared_ptr<Room>& room) {
+                [&room_name](const std::shared_ptr<T>& room) {
                     return room->room_name() == room_name;
                 });
             if (it != std::cend(this->active_rooms)) {
@@ -76,17 +141,24 @@ namespace tavernmx::rooms
             return nullptr;
         }
 
+        /**
+         * @brief Remove all active chat rooms.
+         */
         void clear() {
             this->active_rooms.clear();
             this->_room_names.clear();
         }
 
+        /**
+         * @brief Get the number of active chat rooms.
+         * @return size_t
+         */
         size_t size() const {
             return this->active_rooms.size();
         }
 
     private:
-        std::vector<std::shared_ptr<Room>> active_rooms{};
+        std::vector<std::shared_ptr<T>> active_rooms{};
         std::vector<std::string> _room_names{};
     };
 }

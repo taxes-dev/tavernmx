@@ -1,10 +1,11 @@
 #pragma once
 #include <functional>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "queue.h"
 #include "stack.h"
-#include "room.h"
 
 namespace tavernmx::client
 {
@@ -267,11 +268,11 @@ namespace tavernmx::client
         /// Message issued whenever the user changes the current room.
         static constexpr ClientUiMessage MSG_ROOM_CHANGED = 1;
 
-        /// Current rooms managed by the chat window.
-        rooms::RoomManager rooms{};
-
-        /// Currently selected room.
+        /// Currently selected room (index).
         int32_t current_room_index{0};
+
+        /// Currently selected room (name).
+        std::string current_room_name{};
 
         /// If true, show a message that we're waiting on the server and disable chat controls.
         bool waiting_on_server{ false };
@@ -298,10 +299,9 @@ namespace tavernmx::client
         void render(ClientUi* ui, bool viewport_resized) override;
 
         /**
-         * @brief This needs to be called after material changes to the rooms collection, typically
-         * after processing a ROOM_LIST message.
+         * @brief Update the room list in the display.
          */
-        void rooms_updated();
+        void update_rooms(const std::vector<std::string>& room_name_list);
 
     private:
         std::string host_name{};

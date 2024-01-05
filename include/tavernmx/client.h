@@ -144,3 +144,29 @@ namespace tavernmx::client
         ssl::ssl_unique_ptr<SSL_CTX> ctx{ nullptr };
     };
 }
+
+namespace tavernmx::rooms
+{
+    /**
+     * @brief Represents a chat room managed by the client.
+     */
+    class ClientRoom : public Room
+    {
+    public:
+        /**
+         * @brief Create a ClientRoom.
+         * @param room_name The room's unique name.
+         */
+        explicit ClientRoom(std::string room_name)
+            : Room{ std::move(room_name) } {
+        };
+
+        ClientRoom(const ClientRoom&) = delete;
+
+        ClientRoom(ClientRoom&&) = default;
+
+        ClientRoom& operator=(const ClientRoom&) = delete;
+
+        ClientRoom& operator=(ClientRoom&&) = default;
+    };
+}

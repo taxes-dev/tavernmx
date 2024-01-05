@@ -23,13 +23,16 @@ namespace
 
     void server_worker(const ServerConfiguration& config, std::shared_ptr<ClientConnectionManager> connections) {
         try {
-            RoomManager rooms{};
+            RoomManager<ServerRoom> rooms{};
             TMX_INFO("Server worker starting.");
 
             TMX_INFO("Creating initial rooms ...");
             for (auto& room_name : config.initial_rooms) {
-                TMX_INFO("#{}", room_name);
-                rooms.create_room(room_name);
+                if (const auto room = rooms.create_room(room_name)) {
+                    TMX_INFO("Room created: #{}", room->room_name());
+                } else {
+                    TMX_WARN("Room already exists: #{}", room_name);
+                }
             }
             TMX_INFO("All rooms created.");
 

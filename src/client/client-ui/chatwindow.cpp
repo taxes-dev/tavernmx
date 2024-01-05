@@ -20,6 +20,11 @@ namespace tavernmx::client
         ImGui::BeginChild("Rooms", ImVec2{ window_size.x * 0.2f, 0.0f }, ImGuiChildFlags_None);
         if (ImGui::ListBox("##Rooms1", &this->current_room_index, this->room_names,
             static_cast<int32_t>(this->room_names_size))) {
+            if (this->current_room_index < this->room_names_size) {
+                this->current_room_name = std::string{this->room_names[this->current_room_index] + 1};
+            } else {
+                this->current_room_name.clear();
+            }
             this->call_handler(MSG_ROOM_CHANGED, ui);
         }
         ImGui::EndChild();
@@ -37,16 +42,15 @@ namespace tavernmx::client
         ImGui::End();
     }
 
-    void ChatWindowScreen::rooms_updated() {
-        auto& rooms = this->rooms.room_names();
+    void ChatWindowScreen::update_rooms(const std::vector<std::string>& room_name_list) {
         delete[] this->room_names;
-        this->room_names_size = rooms.size();
+        this->room_names_size = room_name_list.size();
         this->current_room_index = 0;
         this->room_names = new char*[this->room_names_size];
         for (size_t i = 0; i < this->room_names_size; ++i) {
-            this->room_names[i] = new char[rooms[i].length() + 1];
+            this->room_names[i] = new char[room_name_list[i].length() + 1];
             this->room_names[i][0] = '#';
-            std::strcpy(this->room_names[i] + 1, rooms[i].c_str());
+            std::strcpy(this->room_names[i] + 1, room_name_list[i].c_str());
         }
     }
 

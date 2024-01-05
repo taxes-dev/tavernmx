@@ -12,6 +12,7 @@
 
 using namespace tavernmx::client;
 using namespace tavernmx::messaging;
+using namespace tavernmx::rooms;
 
 namespace
 {
@@ -24,6 +25,8 @@ namespace
     std::binary_semaphore connect_thread_signal{ 0 };
     /// Error message from the connection thread.
     std::string connect_thread_error{};
+    /// Manages chat rooms for the client while it's connected.
+    RoomManager<ClientRoom> client_rooms{};
 
     /// Generates a random username for ease of use.
     std::string generate_random_username() {
@@ -336,12 +339,15 @@ namespace
                     TMX_INFO("UI message: {}", static_cast<int32_t>(msg->message_type));
                     switch (msg->message_type) {
                     case MessageType::ROOM_LIST:
-                        chat_screen->rooms.clear();
+                        client_rooms.clear();
                         for (auto& [key, value] : msg->values) {
-                            TMX_INFO("Creating room: {}", std::get<std::string>(value));
-                            chat_screen->rooms.create_room(std::get<std::string>(value));
+                            if (const auto room = client_rooms.create_room(std::get<std::string>(value))) {
+                                TMX_INFO("Created room: #{}", room->room_name());
+                            } else {
+                                TMX_WARN("Room already exists: #{}", std::get<std::string>(value));
+                            }
                         }
-                        chat_screen->rooms_updated();
+                        chat_screen->update_rooms(client_rooms.room_names());
                         break;
                     default:
                         TMX_WARN("Unhandled UI message type: {}", static_cast<int32_t>(msg->message_type));
@@ -351,7 +357,7 @@ namespace
             });
         screen->add_handler(ChatWindowScreen::MSG_ROOM_CHANGED, [](ClientUi*, ClientUiScreen* screen) {
             auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);
-            TMX_INFO("Chat room changed: {}", chat_screen->current_room_index);
+            TMX_INFO("Chat room changed: {}", chat_screen->current_room_name);
         });
 
         // push connection to background thread for message handling

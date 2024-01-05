@@ -3,6 +3,8 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <unistd.h>
+
 #include "shared.h"
 
 using namespace std::string_literals;
@@ -225,5 +227,35 @@ namespace tavernmx::server
          * @brief Removes client connections that are no longer active.
          */
         void cleanup_connections();
+    };
+
+}
+
+namespace tavernmx::rooms
+{
+    /**
+     * @brief Represents a chat room managed by the server.
+     */
+    class ServerRoom : public Room
+    {
+    public:
+        /// Queue of room events that need to be processed by the server work thread.
+        ThreadSafeQueue<RoomEvent> events{};
+
+        /**
+         * @brief Creates a ServerRoom.
+         * @param room_name The room's unique name.
+         */
+        explicit ServerRoom(std::string room_name)
+            : Room{ std::move(room_name) } {
+        };
+
+        ServerRoom(const ServerRoom&) = delete;
+
+        ServerRoom(ServerRoom&&) = default;
+
+        ServerRoom& operator=(const ServerRoom&) = delete;
+
+        ServerRoom& operator=(ServerRoom&&) = default;
     };
 }
