@@ -1,4 +1,5 @@
-add_executable(tavernmx main.cpp clientconnection.cpp serverconfiguration.cpp)
+add_executable(tavernmx main.cpp clientconnection.cpp serverconfiguration.cpp
+    workers/server-worker.cpp workers/client-worker.cpp)
 target_link_libraries(tavernmx PRIVATE tavernmx-shared OpenSSL::SSL OpenSSL::Crypto spdlog::spdlog)
 target_include_directories(tavernmx PRIVATE
     "${PROJECT_SOURCE_DIR}/include")
