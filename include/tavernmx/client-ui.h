@@ -267,12 +267,20 @@ namespace tavernmx::client
     public:
         /// Message issued whenever the user changes the current room.
         static constexpr ClientUiMessage MSG_ROOM_CHANGED = 1;
+        /// Message issued whenever the user inputs a new chat line.
+        static constexpr ClientUiMessage MSG_CHAT_SUBMIT = 2;
 
         /// Currently selected room (index).
         int32_t current_room_index{0};
 
         /// Currently selected room (name).
         std::string current_room_name{};
+
+        /// Chat text to display in the window. (placeholder)
+        std::string chat_display{};
+
+        /// Text currently in the chat input box.
+        std::string chat_input{};
 
         /// If true, show a message that we're waiting on the server and disable chat controls.
         bool waiting_on_server{ false };

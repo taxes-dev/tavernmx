@@ -153,6 +153,9 @@ namespace tavernmx::rooms
     class ClientRoom : public Room
     {
     public:
+        /// Room events received from the server.
+        std::vector<RoomEvent> events{};
+
         /**
          * @brief Create a ClientRoom.
          * @param room_name The room's unique name.
@@ -169,4 +172,5 @@ namespace tavernmx::rooms
 
         ClientRoom& operator=(ClientRoom&&) = default;
     };
+
 }

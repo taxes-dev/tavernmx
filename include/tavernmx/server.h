@@ -1,9 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <mutex>
 #include <optional>
 #include <string>
-#include <unistd.h>
 
 #include "shared.h"
 
@@ -241,6 +241,8 @@ namespace tavernmx::rooms
     public:
         /// Queue of room events that need to be processed by the server work thread.
         ThreadSafeQueue<RoomEvent> events{};
+        /// List of clients that are joined to this chat room.
+        std::vector<std::weak_ptr<server::ClientConnection>> joined_clients{};
 
         /**
          * @brief Creates a ServerRoom.
@@ -257,5 +259,33 @@ namespace tavernmx::rooms
         ServerRoom& operator=(const ServerRoom&) = delete;
 
         ServerRoom& operator=(ServerRoom&&) = default;
+
+        /**
+         * @brief Dumps any expired clients from the join list.
+         */
+        void clean_expired_clients() {
+            std::erase_if(this->joined_clients,
+                [](const std::weak_ptr<server::ClientConnection>& connection) {
+                    return connection.expired();
+                });
+        };
+
+        /**
+         * @brief Join a client to this room, with duplicate checking.
+         * @param client std::weak_ptr to the client connection.
+         * @note Safe for a specific client to call this multiple times. Directly
+         * adding to the joined_clients container could result in duplicate entries.
+         */
+        void join(std::weak_ptr<server::ClientConnection> client) {
+            if (std::find_if(std::cbegin(this->joined_clients), std::cend(this->joined_clients),
+                    [&client](const std::weak_ptr<server::ClientConnection>& client_sub) {
+                        // clever method stolen from StackOverflow to compare without locking
+                        return !client_sub.owner_before(client) && !client.owner_before(client_sub);
+                    }) !=
+                std::cend(this->joined_clients)) {
+                return;
+            }
+            this->joined_clients.push_back(client);
+        }
     };
 }

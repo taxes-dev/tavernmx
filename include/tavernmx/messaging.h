@@ -46,7 +46,18 @@ namespace tavernmx::messaging
         HEARTBEAT = 0x2001,
 
         // Room-related messages
+        /// Sent by client to request list of rooms, sent by server to respond with list of rooms.
         ROOM_LIST = 0x3000,
+        /// Sent by client to request creation of a new room, sent by server to notify of a new room.
+        ROOM_CREATE = 0x3001,
+        /// Sent by client to join a room.
+        ROOM_JOIN = 0x3002,
+
+        // Chat-related messages
+        /// Client sending a single line of chat to a room.
+        CHAT_SEND = 0x4000,
+        /// Server echoing a single line of chat to a room.
+        CHAT_ECHO = 0x4001,
     };
 
     /**
@@ -61,6 +72,34 @@ namespace tavernmx::messaging
         /// Arbitray map of parameters associated with the message. Each key can contain string, int, or bool.
         std::unordered_map<std::string, std::variant<std::string, int32_t, bool>> values{};
     };
+
+    /**
+     * @brief Check if \p message contains a value specified by \p key.
+     * @param message Message
+     * @param key std::string
+     * @return true if \p key is present in the values collection of \p message, otherwise false.
+     */
+    inline bool message_has_value(const Message& message, const std::string& key) {
+        return message.values.contains(key);
+    }
+
+    /**
+     * @brief Attempt to retrieve the value specified by \p key in \p message.
+     * @tparam T One of the types allowed by the Message values collection: std::string, int32_t, or bool.
+     * @param message Message
+     * @param key std::string
+     * @param default_value A default value to return if \p key isn't found.
+     * @return The value associated with \p key if it is present, otherwise \p default_value.
+     */
+    template <typename T>
+        requires std::same_as<T, std::string> || std::same_as<T, int32_t> || std::same_as<T, bool>
+    T message_value_or(const Message& message, const std::string& key, const T& default_value = T{}) {
+        if (message.values.contains(key) &&
+            std::holds_alternative<T>(message.values.at(key))) {
+            return std::get<T>(message.values.at(key));
+        }
+        return default_value;
+    }
 
     /**
      * @brief Takes an arbitrary set of bytes and attempts to construct a MessageBlock from it.
@@ -173,4 +212,39 @@ namespace tavernmx::messaging
         return message;
     }
 
+    /**
+     * @brief Create a ROOM_CREATE Message struct to create a new chat room.
+     * @param room_name The room's unique name.
+     * @return Message
+     */
+    inline Message create_room_create(const std::string& room_name) {
+        return Message{ .message_type = MessageType::ROOM_CREATE,
+                        .values = { { "room_name", room_name } } };
+    }
+
+    /**
+     * @brief Create a ROOM_JOIN Message struct to join a chat room.
+     * @param room_name The room's unique name.
+     * @return Message
+     */
+    inline Message create_room_join(const std::string& room_name) {
+        return Message{ .message_type = MessageType::ROOM_JOIN,
+                        .values = { { "room_name", room_name } } };
+    }
+
+    inline Message create_chat_send(const std::string& room_name, const std::string& text) {
+        return Message{ .message_type = MessageType::CHAT_SEND,
+                        .values = { { "room_name", room_name }, { "text", text } } };
+    }
+
+    inline Message create_chat_echo(const std::string& room_name, const std::string& text,
+        const std::string& user_name, int32_t timestamp) {
+        return Message{ .message_type = MessageType::CHAT_ECHO,
+                        .values = {
+                            { "room_name", room_name },
+                            { "text", text },
+                            { "user_name", user_name },
+                            { "timestamp", timestamp }
+                        } };
+    }
 }

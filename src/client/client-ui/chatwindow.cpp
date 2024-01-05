@@ -4,12 +4,6 @@
 
 using namespace std::string_literals;
 
-namespace
-{
-    std::string placeholder{};
-    std::string placeholder2{};
-}
-
 namespace tavernmx::client
 {
     void ChatWindowScreen::render(ClientUi* ui, bool viewport_resized) {
@@ -21,7 +15,7 @@ namespace tavernmx::client
         if (ImGui::ListBox("##Rooms1", &this->current_room_index, this->room_names,
             static_cast<int32_t>(this->room_names_size))) {
             if (this->current_room_index < this->room_names_size) {
-                this->current_room_name = std::string{this->room_names[this->current_room_index] + 1};
+                this->current_room_name = std::string{ this->room_names[this->current_room_index] + 1 };
             } else {
                 this->current_room_name.clear();
             }
@@ -30,13 +24,15 @@ namespace tavernmx::client
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("Chat", ImVec2{ 0.0f, 0.0f }, ImGuiChildFlags_Border);
-        ImGui::InputTextMultiline("##ChatLog", &placeholder, ImVec2{ 0.0f, 0.0f }, ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputTextMultiline("##ChatLog", &this->chat_display, ImVec2{ 0.0f, 0.0f }, ImGuiInputTextFlags_ReadOnly);
         if (this->waiting_on_server) {
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
             ImGui::Text("Server not responding, please wait...");
             ImGui::PopStyleColor();
-        } else {
-            ImGui::InputText("##ChatEntry", &placeholder2, ImGuiInputTextFlags_None);
+        }
+        if (ImGui::InputText("##ChatEntry", &this->chat_input, ImGuiInputTextFlags_EnterReturnsTrue) &&
+            !this->chat_input.empty()) {
+            this->call_handler(MSG_CHAT_SUBMIT, ui);
         }
         ImGui::EndChild();
         ImGui::End();

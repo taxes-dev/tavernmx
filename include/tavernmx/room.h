@@ -8,8 +8,22 @@
 
 namespace tavernmx::rooms
 {
+    /// Maximum number of characters allowed in room names.
+    constexpr size_t MAX_ROOM_NAME_SIZE = 25;
+
     /// Time stamp type for room events.
     using EventTimeStamp = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
+
+    /**
+     * @brief Checks if \p room_name is in a valid format.
+     * @param room_name The room name.
+     * @return true if \p room_name can be used for a chat room name, otherwise false.
+     * @note Rules:
+     *  - \p room_name cannot be empty or larger than MAX_ROOM_NAME_SIZE.
+     *  - \p room_name can only contain alphanumeric characters or hyphen (-).
+     *  - \p room_name can only begin or end with alphanumeric characters.
+     */
+    bool is_valid_room_name(const std::string& room_name);
 
     /**
      * @brief Describes an individual event that occurred in a chat room.
@@ -18,6 +32,15 @@ namespace tavernmx::rooms
     {
         /// Timestamp of the event.
         EventTimeStamp timestamp{ time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()) };
+
+        /// Type of event.
+        enum
+        {
+            ChatMessage,
+            Created,
+            Destroyed,
+        } event_type{};
+
         /// The user that originated the event, if any.
         std::string origin_user_name{};
         /// Event text to be displayed, if any.
@@ -98,9 +121,12 @@ namespace tavernmx::rooms
          * @param room_name The unique room name to use.
          * @return A std::shared_ptr<T> if the room was created, otherwise nullptr.
          * @note \p room_name must be unique to other rooms currently owned by the
-         * RoomManager.
+         * RoomManager and be a valid room name (see is_valid_room_name(std::string)).
          */
         std::shared_ptr<T> create_room(const std::string& room_name) {
+            if (!is_valid_room_name(room_name)) {
+                return nullptr;
+            }
             if (std::find(std::cbegin(this->_room_names), std::cend(this->_room_names), room_name) !=
                 std::cend(this->_room_names)) {
                 return nullptr;
