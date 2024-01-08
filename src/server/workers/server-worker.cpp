@@ -13,6 +13,9 @@ std::binary_semaphore server_shutdown_signal{ 0 };
 
 namespace
 {
+    /// Target maximum ms for loop processing.
+    constexpr std::chrono::milliseconds TARGET_SERVER_LOOP_MS{ 20ll };
+
     std::vector<Message> room_events_to_messages(ServerRoom* room) {
         std::vector<Message> messages{};
         while (const auto event = room->events.pop()) {
@@ -22,7 +25,6 @@ namespace
                 // Created/destroyed have special handling in server_worker()
                 break;
             case RoomEvent::ChatMessage:
-                // TODO: timestamp storage
                 messages.push_back(create_chat_echo(room->room_name(), event->event_text, event->origin_user_name,
                     static_cast<int32_t>(event->timestamp.time_since_epoch().count())));
                 break;
@@ -58,6 +60,8 @@ namespace tavernmx::server
 
             TMX_INFO("Server work loop starting ...");
             while (connections->is_accepting_connections()) {
+                auto loop_start = std::chrono::high_resolution_clock::now();
+
                 // Step 1. Gather all messages from clients and distribute room events
                 std::vector<std::string> new_rooms{};
                 std::vector<std::string> destroyed_rooms{};
@@ -161,7 +165,13 @@ namespace tavernmx::server
                 rooms.remove_destroyed_rooms();
 
                 // Step 4. Sleep
-                std::this_thread::sleep_for(std::chrono::milliseconds{ 50ll });
+                auto loop_elapsed = std::chrono::high_resolution_clock::now() - loop_start;
+                if (loop_elapsed < TARGET_SERVER_LOOP_MS) {
+                    std::this_thread::sleep_for(TARGET_SERVER_LOOP_MS - loop_elapsed);
+                } else {
+                    TMX_WARN("Server worker loop took too long to process: {}ms",
+                        duration_cast<std::chrono::milliseconds>(loop_elapsed).count());
+                }
             }
 
             TMX_INFO("Server worker exiting.");

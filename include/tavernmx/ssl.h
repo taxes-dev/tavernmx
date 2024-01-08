@@ -15,7 +15,7 @@ namespace tavernmx::ssl
     /// Matches the type of std::chrono::milliseconds, min 45 bits
     using Milliseconds = std::chrono::milliseconds::rep;
     /// Number of milliseconds to wait between SSL retries
-    constexpr Milliseconds SSL_RETRY_MILLISECONDS = 50;
+    constexpr Milliseconds SSL_RETRY_MILLISECONDS = 20;
     /// Number of milliseconds to wait for an expected response
     constexpr Milliseconds SSL_TIMEOUT_MILLISECONDS = 3000;
 

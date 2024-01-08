@@ -9,6 +9,13 @@ std::binary_semaphore connection_ended_signal{0};
 /// This flag will be set to let the UI know we're waiting on a response from the server.
 bool waiting_on_server{false};
 
+namespace
+{
+    /// Target maximum ms for loop processing. This is based off of SSL_RETRY_MILLISECONDS since there's
+    /// a built-in wait in tavernmx::ssl::receive_message(BIO*).
+    constexpr std::chrono::milliseconds TARGET_SERVER_LOOP_MS{ tavernmx::ssl::SSL_RETRY_MILLISECONDS * 2 };
+}
+
 namespace tavernmx::client
 {
     void server_message_worker(std::unique_ptr<ServerConnection> server) {
@@ -20,6 +27,8 @@ namespace tavernmx::client
             server->send_message(create_room_list());
 
             while (server->is_connected()) {
+                auto loop_start = std::chrono::high_resolution_clock::now();
+
                 std::vector<Message> send_messages{};
 
                 // 1. Read waiting messages on socket
@@ -71,7 +80,13 @@ namespace tavernmx::client
                 server->send_messages(std::cbegin(send_messages), std::cend(send_messages));
 
                 // 3. Sleep
-                std::this_thread::sleep_for(std::chrono::milliseconds{ 50ll });
+                auto loop_elapsed = std::chrono::high_resolution_clock::now() - loop_start;
+                if (loop_elapsed < TARGET_SERVER_LOOP_MS) {
+                    std::this_thread::sleep_for(TARGET_SERVER_LOOP_MS - loop_elapsed);
+                } else {
+                    TMX_WARN("Server connection loop took too long to process: {}ms",
+                        duration_cast<std::chrono::milliseconds>(loop_elapsed).count());
+                }
             }
             TMX_INFO("Connection worker exiting.");
         } catch (std::exception& ex) {

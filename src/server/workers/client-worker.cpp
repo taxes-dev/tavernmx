@@ -2,9 +2,16 @@
 
 using namespace tavernmx::messaging;
 
+namespace
+{
+    /// Target maximum ms for loop processing. This is based off of SSL_RETRY_MILLISECONDS since there's
+    /// a built-in wait in tavernmx::ssl::receive_message(BIO*).
+    constexpr std::chrono::milliseconds TARGET_CLIENT_LOOP_MS{ tavernmx::ssl::SSL_RETRY_MILLISECONDS * 2 };
+}
+
 namespace tavernmx::server
 {
-        void client_worker(std::shared_ptr<ClientConnection> client) {
+    void client_worker(std::shared_ptr<ClientConnection> client) {
         try {
             // Expect client to send HELLO as the first message
             if (auto hello = client->wait_for(MessageType::HELLO)) {
@@ -20,6 +27,8 @@ namespace tavernmx::server
 
             // Serialize messages back and forth from client
             while (client->is_connected()) {
+                auto loop_start = std::chrono::high_resolution_clock::now();
+
                 std::vector<Message> send_messages{};
 
                 // 1. Read waiting messages on socket
@@ -56,7 +65,13 @@ namespace tavernmx::server
                 client->send_messages(std::cbegin(send_messages), std::cend(send_messages));
 
                 // 3. Sleep
-                std::this_thread::sleep_for(std::chrono::milliseconds{ 100ll });
+                auto loop_elapsed = std::chrono::high_resolution_clock::now() - loop_start;
+                if (loop_elapsed < TARGET_CLIENT_LOOP_MS) {
+                    std::this_thread::sleep_for(TARGET_CLIENT_LOOP_MS - loop_elapsed);
+                } else {
+                    TMX_WARN("Client worker loop took too long to process: {}ms",
+                        duration_cast<std::chrono::milliseconds>(loop_elapsed).count());
+                }
             }
             TMX_INFO("Client worker exiting.");
         } catch (const std::exception& ex) {

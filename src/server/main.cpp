@@ -61,7 +61,10 @@ int main() {
                     client_thread_pool.get_thread_count());
                 if (client_thread_pool.get_tasks_running() >= client_thread_pool.get_thread_count()) {
                     TMX_WARN("Too many connections.");
-                    client->get()->shutdown();
+                    (*client)->send_message(create_nak("Too many connections."s));
+                    (*client)->shutdown();
+
+                    // slight delay before trying to accept another client
                     std::this_thread::sleep_for(std::chrono::seconds{ 1 });
                 } else {
                     client_thread_pool.detach_task(std::bind(client_worker, client.value()));
