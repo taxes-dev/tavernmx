@@ -307,6 +307,16 @@ namespace tavernmx::client
         void render(ClientUi* ui, bool viewport_resized) override;
 
         /**
+         * @brief Select chat room with name \p room_name, if it exists.
+         * @param room_name Unique name of the room to select.
+         * @return Index of the room name actually selected, which may be different from the
+         * requested one if it was unable to be selected.
+         * @note This can also result in an update to current_room_name / current_room_index. Also
+         * it will not trigger MSG_ROOM_CHANGED.
+         */
+        size_t select_room_by_name(const std::string& room_name);
+
+        /**
          * @brief Update the room list in the display.
          */
         void update_rooms(const std::vector<std::string>& room_name_list);

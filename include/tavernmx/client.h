@@ -155,6 +155,8 @@ namespace tavernmx::rooms
     public:
         /// Room events received from the server.
         std::vector<RoomEvent> events{};
+        /// Have we already requested to join this room?
+        bool is_joined{};
 
         /**
          * @brief Create a ClientRoom.

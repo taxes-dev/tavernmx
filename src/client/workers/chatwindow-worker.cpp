@@ -48,7 +48,8 @@ namespace tavernmx::client
                 while (auto msg = messages_in->pop()) {
                     TMX_INFO("UI message: {}", static_cast<int32_t>(msg->message_type));
                     switch (msg->message_type) {
-                    case MessageType::ROOM_LIST:
+                    case MessageType::ROOM_LIST: {
+                        std::string current_room_name = chat_screen->current_room_name;
                         client_rooms.clear();
                         for (auto& [key, value] : msg->values) {
                             if (const auto room = client_rooms.create_room(std::get<std::string>(value))) {
@@ -58,13 +59,31 @@ namespace tavernmx::client
                             }
                         }
                         chat_screen->update_rooms(client_rooms.room_names());
-                    // TODO: rejoin previously selected room if it still exists
-                        break;
+
+                        // rejoin previously selected room if it still exists, otherwise will default to first room
+                        chat_screen->select_room_by_name(current_room_name);
+                        if (!chat_screen->current_room_name.empty()) {
+                            TMX_INFO("Join issued for room: {}", chat_screen->current_room_name);
+                            messages_out->push(create_room_join(chat_screen->current_room_name));
+                            client_rooms[chat_screen->current_room_name]->is_joined = true;
+                        }
+                    }
+                    break;
                     case MessageType::ROOM_CREATE: {
                         auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                        std::string current_room_name = chat_screen->current_room_name;
                         if (const auto room = client_rooms.create_room(room_name)) {
                             TMX_INFO("Created room: #{}", room->room_name());
                             chat_screen->update_rooms(client_rooms.room_names());
+
+                            // re-select previously selected room if it still exists, otherwise will default to first room
+                            chat_screen->select_room_by_name(current_room_name);
+                            const auto selected_room = client_rooms[chat_screen->current_room_name];
+                            if (selected_room && !selected_room->is_joined) {
+                                TMX_INFO("Join issued for room: {}", selected_room->room_name());
+                                messages_out->push(create_room_join(selected_room->room_name()));
+                                selected_room->is_joined = true;
+                            }
                         } else {
                             TMX_WARN("Room already exists: #{}", room_name);
                         }
@@ -100,8 +119,12 @@ namespace tavernmx::client
         screen->add_handler(ChatWindowScreen::MSG_ROOM_CHANGED, [messages_out](ClientUi*, ClientUiScreen* screen) {
             const auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);
             TMX_INFO("Chat room changed: {}", chat_screen->current_room_name);
-            // TODO: only rejoin if needed
-            messages_out->push(create_room_join(chat_screen->current_room_name));
+            const auto new_room = client_rooms[chat_screen->current_room_name];
+            if (new_room && !new_room->is_joined) {
+                TMX_INFO("Join issued for room: {}", new_room->room_name());
+                messages_out->push(create_room_join(new_room->room_name()));
+                new_room->is_joined = true;
+            }
         });
         screen->add_handler(ChatWindowScreen::MSG_CHAT_SUBMIT, [messages_out](ClientUi*, ClientUiScreen* screen) {
             const auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);

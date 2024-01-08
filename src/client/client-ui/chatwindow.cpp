@@ -30,12 +30,25 @@ namespace tavernmx::client
             ImGui::Text("Server not responding, please wait...");
             ImGui::PopStyleColor();
         }
+        ImGui::BeginDisabled(this->waiting_on_server);
         if (ImGui::InputText("##ChatEntry", &this->chat_input, ImGuiInputTextFlags_EnterReturnsTrue) &&
             !this->chat_input.empty()) {
             this->call_handler(MSG_CHAT_SUBMIT, ui);
         }
+        ImGui::EndDisabled();
         ImGui::EndChild();
         ImGui::End();
+    }
+
+    size_t ChatWindowScreen::select_room_by_name(const std::string& room_name) {
+        for (size_t i = 0; i < this->room_names_size; ++i) {
+            if (std::strcmp(room_name.c_str(), this->room_names[i] + 1) == 0) {
+                this->current_room_index = static_cast<int32_t>(i);
+                this->current_room_name = room_name;
+                break;
+            }
+        }
+        return this->current_room_index;
     }
 
     void ChatWindowScreen::update_rooms(const std::vector<std::string>& room_name_list) {
@@ -47,6 +60,11 @@ namespace tavernmx::client
             this->room_names[i] = new char[room_name_list[i].length() + 1];
             this->room_names[i][0] = '#';
             std::strcpy(this->room_names[i] + 1, room_name_list[i].c_str());
+        }
+        if (this->room_names_size > 0) {
+            this->current_room_name = std::string{this->room_names[0] + 1};
+        } else {
+            this->current_room_name.clear();
         }
     }
 
