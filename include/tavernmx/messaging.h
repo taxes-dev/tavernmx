@@ -52,6 +52,8 @@ namespace tavernmx::messaging
         ROOM_CREATE = 0x3001,
         /// Sent by client to join a room.
         ROOM_JOIN = 0x3002,
+        /// Sent by client to request deletion of a room, sent by server to notify of a deleted room.
+        ROOM_DESTROY = 0x3003,
 
         // Chat-related messages
         /// Client sending a single line of chat to a room.
@@ -232,11 +234,35 @@ namespace tavernmx::messaging
                         .values = { { "room_name", room_name } } };
     }
 
+    /**
+     * @brief Create a ROOM_DESTROY Message struct to destroy an existing chat room.
+     * @param room_name The room's unique name.
+     * @return Message
+     */
+    inline Message create_room_destroy(const std::string& room_name) {
+        return Message{ .message_type = MessageType::ROOM_DESTROY,
+                        .values = { { "room_name", room_name } } };
+    }
+
+    /**
+     * @brief Create a CHAT_SEND Message struct to send a chat message to the server.
+     * @param room_name Target room name.
+     * @param text Line of chat text.
+     * @return Message
+     */
     inline Message create_chat_send(const std::string& room_name, const std::string& text) {
         return Message{ .message_type = MessageType::CHAT_SEND,
                         .values = { { "room_name", room_name }, { "text", text } } };
     }
 
+    /**
+     * @brief Create a CHAT_ECHO Message struct to send a chat message to a client.
+     * @param room_name Origin room name.
+     * @param text Line of chat text.
+     * @param user_name Orign user name.
+     * @param timestamp Number of seconds since epoch when the event occurred.
+     * @return Message
+     */
     inline Message create_chat_echo(const std::string& room_name, const std::string& text,
         const std::string& user_name, int32_t timestamp) {
         return Message{ .message_type = MessageType::CHAT_ECHO,

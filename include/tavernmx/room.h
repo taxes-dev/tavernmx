@@ -77,8 +77,25 @@ namespace tavernmx::rooms
          */
         const std::string& room_name() const { return this->_room_name; };
 
+        /**
+         * @brief Should this room be destroyed?
+         * @return true if the room should be destroyed, otherwise false.
+         */
+        bool is_destroy_requested() const {
+            return this->destroy_requested;
+        }
+
+        /**
+         * @brief Mark this chat room to be destroyed.
+         * @note If overridden, derived classes should call the base class.
+         */
+        virtual void request_destroy() {
+            this->destroy_requested = true;
+        }
+
     private:
         std::string _room_name{};
+        bool destroy_requested{ false };
     };
 
     /**
@@ -173,6 +190,20 @@ namespace tavernmx::rooms
         void clear() {
             this->active_rooms.clear();
             this->_room_names.clear();
+        }
+
+        /**
+         * @brief Remove all rooms marked for destruction.
+         */
+        void remove_destroyed_rooms() {
+            if (std::erase_if(this->active_rooms, [](const std::shared_ptr<Room>& room) {
+                return room->is_destroy_requested();
+            }) > 0) {
+                this->_room_names.clear();
+                for (auto& room : this->active_rooms) {
+                    this->_room_names.push_back(room->room_name());
+                }
+            }
         }
 
         /**

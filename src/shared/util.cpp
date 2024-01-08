@@ -10,20 +10,6 @@ namespace tavernmx
             return;
         }
 
-        /*size_t pos = 0;
-        while (pos < input.length()) {
-            const auto delim_pos = input.find(delimiter, pos);
-            if (delim_pos == std::string::npos) {
-                output.push_back(input.substr(pos));
-                break;
-            }
-            output.push_back(input.substr(pos, delim_pos - pos));
-            pos = delim_pos + 1;
-        }
-        std::erase_if(output, [delimiter](const std::string& s) {
-            return std::all_of(std::cbegin(s), std::cend(s),
-                [delimiter](char c) { return c == delimiter; });
-        });*/
         std::string token{};
         token.reserve(input.size());
         for (auto c : input) {
