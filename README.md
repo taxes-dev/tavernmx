@@ -8,11 +8,19 @@
 
 ## Building
 
-Building requires [CMake](https://cmake.org/) 3.26 or later and has been tested on Visual Studio 2022 for Windows (x64), CLion 2023 for macOS (arm64), and with Makefiles on Ubuntu (x64). Note that when using gcc, you'll need version 11 or later.
+Building requires:
+* [CMake](https://cmake.org/) 3.26+
+* A C++20-capable compiler
+* [vcpkg](https://vcpkg.io/en/)
+
+Tested OS/compilers:
+* Visual Studio 2022 on Windows 11 (x64)
+* CLion 2023 on macOS Sonoma (arm64), with Xcode 14.3+
+* Makefiles on Ubuntu 22.04 (x64), with gcc 11+
 
 ### CMake configuration
 
-CLion and Visual Studio should be able to configure the project automatically. Make sure [vcpkg](https://vcpkg.io/en/) is available and integrated with the IDE.
+CLion and Visual Studio should be able to configure the project automatically. Make sure vcpkg is available and integrated with the IDE.
 
 If you need to configure manually, specify the vcpkg toolchain file. Example:
 

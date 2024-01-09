@@ -74,7 +74,7 @@ namespace tavernmx::client
                                 connection->connect();
                                 connection->send_message(create_hello(user_name));
 
-                                if (auto acknak = connection->wait_for_ack_or_nak()) {
+                                if (const auto acknak = connection->wait_for_ack_or_nak()) {
                                     if (acknak->message_type == MessageType::NAK) {
                                         auto nakmsg = message_value_or<std::string>(*acknak, "error"s);
                                         TMX_WARN("Server denied request to connect: {}", nakmsg);
@@ -89,6 +89,7 @@ namespace tavernmx::client
                                 connect_thread_signal.release();
                             } catch (std::exception& ex) {
                                 TMX_ERR("connection_thread error: {}", ex.what());
+                                connection->shutdown();
                                 connect_thread_signal.release();
                             }
                         } };

@@ -15,40 +15,44 @@ namespace tavernmx::client
         // user name
         ImGui::Text("User name:");
         ImGui::SameLine();
-        if (this->user_name_invalid) {
+        // the invalid flags are copied first since try_submit() can alter them
+        bool invalid = this->user_name_invalid;
+        if (invalid) {
             ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(255, 0, 0, 50));
         }
         if (ImGui::InputText("##user", &this->user_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
             this->try_submit(ui);
         }
-        if (this->user_name_invalid) {
+        if (invalid) {
             ImGui::PopStyleColor();
         }
 
         // host name
         ImGui::Text("Host:");
         ImGui::SameLine();
-        if (this->host_name_invalid) {
+        invalid = this->host_name_invalid;
+        if (invalid) {
             ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(255, 0, 0, 50));
         }
         if (ImGui::InputText("##host", &this->host_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
             this->try_submit(ui);
         }
-        if (this->host_name_invalid) {
+        if (invalid) {
             ImGui::PopStyleColor();
         }
 
         // host port
         ImGui::Text("Port:");
         ImGui::SameLine();
-        if (this->host_port_invalid) {
+        invalid = this->host_port_invalid;
+        if (invalid) {
             ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(255, 0, 0, 50));
         }
         if (ImGui::InputText("##port", &this->host_port,
             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
             this->try_submit(ui);
         }
-        if (this->host_port_invalid) {
+        if (invalid) {
             ImGui::PopStyleColor();
         }
 
@@ -67,7 +71,7 @@ namespace tavernmx::client
                                       });
         this->host_name_invalid = host_name.empty() || !std::all_of(std::cbegin(this->host_name),
                                       std::cend(this->host_name), [](char c) {
-                                          return std::isalnum(c) || c == '.';
+                                          return std::isalnum(c) || c == '.' || c == '-';
                                       });;
         this->host_port_invalid = this->host_port.empty() || !std::all_of(std::cbegin(this->host_port),
                                       std::cend(this->host_port), [](char c) {
