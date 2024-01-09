@@ -8,7 +8,7 @@
 
 ## Building
 
-Building requires [CMake](https://cmake.org/) 3.26 or later and has been tested on Visual Studio 2022 for Windows (x64) and CLion for macOS (arm64).
+Building requires [CMake](https://cmake.org/) 3.26 or later and has been tested on Visual Studio 2022 for Windows (x64), CLion 2023 for macOS (arm64), and with Makefiles on Ubuntu (x64). Note that when using gcc, you'll need version 11 or later.
 
 ### CMake configuration
 

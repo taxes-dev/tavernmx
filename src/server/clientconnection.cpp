@@ -5,8 +5,10 @@
 
 #ifdef TMX_WINDOWS
 #include <WinSock2.h>
-#else
+#elif TMX_MACOS
 #include <libc.h>
+#else
+#include <unistd.h>
 #endif
 
 using namespace tavernmx::ssl;

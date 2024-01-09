@@ -1,5 +1,6 @@
 #pragma once
-
+#include <memory>
+#include <optional>
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>

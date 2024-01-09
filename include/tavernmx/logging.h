@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
 

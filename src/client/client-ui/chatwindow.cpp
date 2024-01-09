@@ -1,3 +1,4 @@
+#include <cstring>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include "tavernmx/client-ui.h"
