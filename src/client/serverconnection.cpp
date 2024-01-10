@@ -19,10 +19,10 @@ namespace
 
 namespace tavernmx::client
 {
-    ServerConnection::ServerConnection(std::string host_name, int32_t host_port)
+    ServerConnection::ServerConnection(std::string host_name, int32_t host_port, std::string user_name)
         : messages_in{ std::make_shared<ThreadSafeQueue<messaging::Message>>() },
           messages_out{ std::make_shared<ThreadSafeQueue<messaging::Message>>() },
-          host_name{ std::move(host_name) }, host_port{ host_port } {
+          host_name{ std::move(host_name) }, host_port{ host_port }, user_name{ std::move(user_name) } {
         SSL_load_error_strings();
         this->ctx = ssl_unique_ptr<SSL_CTX>(SSL_CTX_new(TLS_client_method()));
         SSL_CTX_set_min_proto_version(this->ctx.get(), TLS1_2_VERSION);

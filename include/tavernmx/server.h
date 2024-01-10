@@ -1,4 +1,5 @@
 #pragma once
+#define TMX_SERVER
 
 #include <algorithm>
 #include <mutex>

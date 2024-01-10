@@ -3,9 +3,9 @@
 #include "tavernmx/server.h"
 #include "tavernmx/platform.h"
 
-#ifdef TMX_WINDOWS
+#if defined(TMX_WINDOWS)
 #include <WinSock2.h>
-#elif TMX_MACOS
+#elif defined(TMX_MACOS)
 #include <libc.h>
 #else
 #include <unistd.h>

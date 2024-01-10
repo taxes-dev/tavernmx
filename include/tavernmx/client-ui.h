@@ -1,11 +1,18 @@
 #pragma once
+#ifndef TMX_CLIENT
+#define TMX_CLIENT
+#endif
+
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "queue.h"
+#include "ringbuffer.h"
+#include "room.h"
 #include "stack.h"
 
 namespace tavernmx::client
@@ -266,19 +273,18 @@ namespace tavernmx::client
     class ChatWindowScreen : public ClientUiScreen
     {
     public:
+        /// Maximum amount of chat room history to track.
+        static constexpr size_t CHAT_ROOM_HISTORY_SIZE = 1000;
         /// Message issued whenever the user changes the current room.
         static constexpr ClientUiMessage MSG_ROOM_CHANGED = 1;
         /// Message issued whenever the user inputs a new chat line.
         static constexpr ClientUiMessage MSG_CHAT_SUBMIT = 2;
 
         /// Currently selected room (index).
-        int32_t current_room_index{0};
+        int32_t current_room_index{ 0 };
 
         /// Currently selected room (name).
         std::string current_room_name{};
-
-        /// Chat text to display in the window. (placeholder)
-        std::string chat_display{};
 
         /// Text currently in the chat input box.
         std::string chat_input{};
@@ -289,9 +295,10 @@ namespace tavernmx::client
         /**
          * @brief Creates a ChatWindowScreen.
          * @param host_name The currently connected host name, for display purposes only.
+         * @param user_name The currently connected user name, for display purposes only.
          */
-        explicit ChatWindowScreen(std::string host_name)
-            : host_name{ std::move(host_name) } {
+        ChatWindowScreen(const std::string& host_name, const std::string& user_name) {
+            this->window_label =  user_name + "@" + host_name;
             this->room_names = new char*[0];
         };
 
@@ -322,9 +329,23 @@ namespace tavernmx::client
          */
         void update_rooms(const std::vector<std::string>& room_name_list);
 
+        /**
+         * @brief Insert an \p event into the history for \p room_name.
+         * @param room_name Unique name of the room that generated \p event.
+         * @param event tavernmx::rooms::RoomEvent
+         * @note Thread-safe.
+         */
+        void insert_chat_history_event(const std::string& room_name, rooms::RoomEvent event);
+
     private:
-        std::string host_name{};
-        char **room_names{nullptr};
-        size_t room_names_size{0};
+        std::string window_label{};
+        char** room_names{ nullptr };
+        size_t room_names_size{ 0 };
+        std::unordered_map<std::string, RingBuffer<rooms::RoomEvent, CHAT_ROOM_HISTORY_SIZE>> chat_room_history{};
+        std::mutex chat_history_mutex{};
+        bool reset_scroll_pos{ false };
+        bool reset_text_focus{ true };
+
+        void render_chat_history();
     };
 }

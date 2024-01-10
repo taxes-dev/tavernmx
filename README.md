@@ -6,6 +6,8 @@
 * `tavernmx-client` - Client application.
 * `tavernmx-shared` - Static library of shared code between server and client.
 
+![](example.png)
+
 ## Building
 
 Building requires:
@@ -38,6 +40,7 @@ The project uses several external dependencies, but they should be automatically
 * [SDL 2.28.4](https://www.libsdl.org/) - client only
 * [Dear ImGui](https://github.com/ocornut/imgui) - client only
 * [BS::thread_pool 4.0.1](https://github.com/bshoshany/thread-pool) - server only
+* [Catch2 3.4.0](https://github.com/catchorg/Catch2) - tests only
 
 ## Running
 

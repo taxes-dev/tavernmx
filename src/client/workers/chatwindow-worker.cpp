@@ -125,16 +125,9 @@ namespace tavernmx::client
                             .origin_user_name = message_value_or(*msg, "user_name"s, "(unknown)"s),
                             .event_text = message_value_or(*msg, "text"s, ""s),
                         };
-                        TMX_INFO("CHAT_ECHO: {}", room_name);
-                        TMX_INFO("timestamp: {}", event.timestamp.time_since_epoch().count());
-                        TMX_INFO("origin_user_name: {}", event.origin_user_name);
-                        TMX_INFO("event_text: {}", event.event_text);
-                        if (auto room = client_rooms[room_name]) {
-                            // TODO: placeholder
-                            chat_screen->chat_display += "\n"s + room_event_to_string(event);
-
-                            room->events.push_back(std::move(event));
-                        }
+                        event.timestamp_text = fmt::format("{:%0I:%M %p}",
+                            fmt::localtime(event.timestamp.time_since_epoch().count()));
+                        chat_screen->insert_chat_history_event(room_name, std::move(event));
                     }
                     break;
                     default:

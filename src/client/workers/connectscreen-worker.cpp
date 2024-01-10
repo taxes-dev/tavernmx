@@ -35,7 +35,8 @@ namespace tavernmx::client
                 TMX_INFO("Connection cancelled by user.");
             } else if (connection && connection->is_connected()) {
                 TMX_INFO("Connected.");
-                auto chat_screen = std::make_unique<ChatWindowScreen>(connection->get_host_name());
+                auto chat_screen = std::make_unique<ChatWindowScreen>(connection->get_host_name(),
+                    connection->get_user_name());
                 chat_window_worker(std::move(connection), chat_screen.get());
                 ui->push_screen(std::move(chat_screen));
             } else {
@@ -63,16 +64,16 @@ namespace tavernmx::client
                     const auto conn_screen = dynamic_cast<ConnectUiScreen*>(screen);
                     const int32_t host_port = std::stoi(conn_screen->host_port);
                     TMX_INFO("Connecting to {}:{} ...", conn_screen->host_name, host_port);
-                    connection = std::make_unique<ServerConnection>(conn_screen->host_name, host_port);
+                    connection = std::make_unique<ServerConnection>(conn_screen->host_name, host_port, conn_screen->user_name);
                     for (auto& cert : config.custom_certificates) {
                         connection->load_certificate(cert);
                     }
                     // Connect on background thread so it doesn't block UI
                     std::thread connection_thread{
-                        [user_name = conn_screen->user_name]() {
+                        []() {
                             try {
                                 connection->connect();
-                                connection->send_message(create_hello(user_name));
+                                connection->send_message(create_hello(connection->get_user_name()));
 
                                 if (const auto acknak = connection->wait_for_ack_or_nak()) {
                                     if (acknak->message_type == MessageType::NAK) {

@@ -108,10 +108,6 @@ int main(int argv, char** argc) {
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
-            // Define ImGui controls
-            bool show_demo_window = true;
-            ImGui::ShowDemoWindow(&show_demo_window);
-
             client_ui->render();
 
             // Render and present

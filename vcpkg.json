@@ -26,9 +26,9 @@
   }, {
     "name" : "imgui",
     "version>=" : "1.90",
-    "features": [
-      "sdl2-binding",
-      "sdl2-renderer-binding"
-    ]
+    "features" : [ "sdl2-binding", "sdl2-renderer-binding" ]
+  }, {
+    "name" : "catch2",
+    "version>=" : "3.4.0"
   } ]
 }

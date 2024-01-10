@@ -1,4 +1,5 @@
 #pragma once
+#define TMX_CLIENT
 
 #include <exception>
 #include <string>
@@ -104,11 +105,12 @@ namespace tavernmx::client
 
         /**
          * @brief Creates a ServerConnection that will connect to \p host_name on TCP port \p host_port.
-         * @param host_name
-         * @param host_port
+         * @param host_name Host name to connect to.
+         * @param host_port Host port to connect to.
+         * @param user_name User name associated with the connection.
          * @throws TransportError if openssl can't be initialized
          */
-        ServerConnection(std::string host_name, int32_t host_port);
+        ServerConnection(std::string host_name, int32_t host_port, std::string user_name);
 
         ServerConnection(const ServerConnection&) = delete;
 
@@ -138,9 +140,16 @@ namespace tavernmx::client
          */
         const std::string& get_host_name() const { return this->host_name; }
 
+        /**
+         * @brief Get the user name associated with this connection.
+         * @return std::string
+         */
+        const std::string& get_user_name() const { return this->user_name; }
+
     private:
         std::string host_name{};
         int32_t host_port{};
+        std::string user_name{};
         ssl::ssl_unique_ptr<SSL_CTX> ctx{ nullptr };
     };
 }
@@ -153,8 +162,6 @@ namespace tavernmx::rooms
     class ClientRoom : public Room
     {
     public:
-        /// Room events received from the server.
-        std::vector<RoomEvent> events{};
         /// Have we already requested to join this room?
         bool is_joined{};
 
