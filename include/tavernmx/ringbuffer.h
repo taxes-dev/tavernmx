@@ -64,12 +64,12 @@ namespace tavernmx
                 return tmp;
             }
 
-            bool operator==(const Iterator& other) {
-                return this->_buffer == other._buffer && this->_pos == other._pos;
+            friend bool operator==(const Iterator& a, const Iterator& b) {
+                return a._buffer == b._buffer && a._pos == b._pos;
             };
 
-            bool operator!=(const Iterator& other) {
-                return this->_buffer != other._buffer || this->_pos != other._pos;
+            friend bool operator!=(const Iterator& a, const Iterator& b) {
+                return a._buffer != b._buffer || a._pos != b._pos;
             };
 
         private:
