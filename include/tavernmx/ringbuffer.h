@@ -150,7 +150,7 @@ namespace tavernmx
          * @brief Erases all elements from the container. After this call, size() returns zero.
          */
         void reset() {
-            for (auto& elem : this->_data) {
+            for (std::unique_ptr<T>& elem : this->_data) {
                 elem.reset();
             }
             this->_head = this->_tail;
@@ -177,7 +177,7 @@ namespace tavernmx
          * @brief Returns an iterator to the first element of the container.
          * @return Iterator to the first element.
          */
-        auto begin() {
+        Iterator begin() {
             return Iterator{ this, this->_tail };
         }
 
@@ -185,7 +185,7 @@ namespace tavernmx
          * @brief Returns an iterator to the element following the last element of the container.
          * @return Iterator to the element following the last element.
          */
-        auto end() {
+        Iterator end() {
             return Iterator{ this, this->_head };
         }
 
@@ -194,7 +194,7 @@ namespace tavernmx
          * corresponds to the last element of the non-reversed container.
          * @return Reverse iterator to the first element.
          */
-        auto rbegin() {
+        std::reverse_iterator<Iterator> rbegin() {
             return std::reverse_iterator{ this->end() };
         }
 
@@ -203,7 +203,7 @@ namespace tavernmx
          * container. It corresponds to the element preceding the first element of the non-reversed container.
          * @return Reverse iterator to the element following the last element.
          */
-        auto rend() {
+        std::reverse_iterator<Iterator> rend() {
             return std::reverse_iterator{ this->begin() };
         }
 
@@ -212,6 +212,10 @@ namespace tavernmx
         size_t _head{ 0 };
         size_t _tail{ 0 };
 
+        /**
+         * @brief Increments the head of the container. Increments the tail as well once the
+         * container is full.
+         */
         void increment() {
             this->_head = (this->_head + 1) % this->capacity();
             if (this->_tail == this->_head) {

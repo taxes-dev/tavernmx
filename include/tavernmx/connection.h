@@ -26,7 +26,7 @@ namespace tavernmx
         };
         /**
          * @brief Create a new TransportError.
-         * @param what description of the error
+         * @param what (copied) description of the error
          * @param inner exception that caused this error
          */
         TransportError(std::string what, const std::exception& inner) noexcept
@@ -53,13 +53,16 @@ namespace tavernmx
         std::string what_str{};
     };
 
+    /**
+     * @brief Base class for TLS connections.
+     */
     class BaseConnection
     {
     public:
         /**
          * @brief Creates a new BaseConnection.
          */
-        BaseConnection() = default;
+        BaseConnection() noexcept = default;
 
         virtual ~BaseConnection() { this->shutdown(); }
 
@@ -103,7 +106,7 @@ namespace tavernmx
         void send_messages(Iterator begin, Iterator end) {
             // TODO: ditch intermediary container
             const std::vector<messaging::Message> messages{ begin, end };
-            const auto blocks = messaging::pack_messages(messages);
+            const std::vector<messaging::MessageBlock> blocks = messaging::pack_messages(messages);
             this->send_message_blocks(std::cbegin(blocks), std::cend(blocks));
         };
 

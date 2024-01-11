@@ -27,20 +27,16 @@ int main() {
         TMX_INFO("Loading configuration ...");
         const ServerConfiguration config{ "server-config.json" };
         const spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
-        std::optional<std::string> log_file{};
-        if (!config.log_file.empty()) {
-            log_file = config.log_file;
-        }
-        tavernmx::configure_logging(log_level, log_file);
+        tavernmx::configure_logging(log_level, config.log_file);
 
         TMX_INFO("Configuration loaded. Server starting ...");
 
-        auto connections = std::make_shared<ClientConnectionManager>(config.host_port);
+        const auto connections = std::make_shared<ClientConnectionManager>(config.host_port);
         connections->load_certificate(config.host_certificate_path, config.host_private_key_path);
         std::weak_ptr wk_connections = connections;
         static auto sigint_handler = [&wk_connections]() {
             TMX_WARN("Interrupt received.");
-            if (auto connections = wk_connections.lock()) {
+            if (const std::shared_ptr<ClientConnectionManager> connections = wk_connections.lock()) {
                 connections->shutdown();
             }
         };
@@ -50,14 +46,15 @@ int main() {
         std::thread server_thread{ server_worker, config, connections };
         server_ready_signal.acquire();
 
+        // begin accepting connections and inform the server worker
         connections->begin_accept();
         server_accept_signal.release();
 
         TMX_INFO("Accepting connections ...");
         BS::thread_pool client_thread_pool{ static_cast<BS::concurrency_t>(config.max_clients) };
         while (!server_shutdown_signal.try_acquire() && connections->is_accepting_connections()) {
-            if (auto client = connections->await_next_connection()) {
-                TMX_INFO("Running: {} / {}", client_thread_pool.get_tasks_running(),
+            if (std::optional<std::shared_ptr<ClientConnection>> client = connections->await_next_connection()) {
+                TMX_INFO("Running threads: {} / {}", client_thread_pool.get_tasks_running(),
                     client_thread_pool.get_thread_count());
                 if (client_thread_pool.get_tasks_running() >= client_thread_pool.get_thread_count()) {
                     TMX_WARN("Too many connections.");

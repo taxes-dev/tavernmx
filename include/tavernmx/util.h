@@ -6,7 +6,7 @@ namespace tavernmx
 {
     /**
      * @brief Converts a string to lowercase.
-     * @param s std::string
+     * @param s (copied) std::string
      * @return std::string
      */
     std::string str_tolower(std::string s);

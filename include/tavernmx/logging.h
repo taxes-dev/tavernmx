@@ -19,8 +19,17 @@
 
 namespace tavernmx
 {
+    /**
+     * @brief Configure spdlog loggers.
+     * @param level Maximum log level to log. tavernmx uses error, warn, and info.
+     * @param log_file If specified, log to this file as well as console.
+     */
     void configure_logging(spdlog::level::level_enum level, const std::optional<std::string>& log_file);
 
+    /**
+     * @brief Retrieve currently configured spdlog loggers.
+     * @return std::vector<std::shared_ptr<spdlog::logger>>
+     */
     std::vector<std::shared_ptr<spdlog::logger>>& get_loggers();
 
     /**
@@ -29,7 +38,7 @@ namespace tavernmx
     * @param msg is the message
     */
     inline void log_info(const char* msg) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->info(msg);
         }
     }
@@ -42,7 +51,7 @@ namespace tavernmx
     */
     template <typename... Args>
     void log_info(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->info(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }
@@ -53,7 +62,7 @@ namespace tavernmx
     * @param msg is the message
     */
     inline void log_warn(const char* msg) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->warn(msg);
         }
     }
@@ -66,7 +75,7 @@ namespace tavernmx
     */
     template <typename... Args>
     void log_warn(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->warn(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }
@@ -77,7 +86,7 @@ namespace tavernmx
     * @param msg is the message
     */
     inline void log_error(const char* msg) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->error(msg);
         }
     }
@@ -90,7 +99,7 @@ namespace tavernmx
     */
     template <typename... Args>
     void log_error(fmt::format_string<Args...> fmt, Args&&... args) {
-        for (auto& logger : get_loggers()) {
+        for (const std::shared_ptr<spdlog::logger>& logger : get_loggers()) {
             logger->error(std::forward<fmt::format_string<Args...>>(fmt), std::forward<Args>(args)...);
         }
     }

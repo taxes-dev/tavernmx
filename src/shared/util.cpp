@@ -12,7 +12,7 @@ namespace tavernmx
 
         std::string token{};
         token.reserve(input.size());
-        for (auto c : input) {
+        for (const char c : input) {
             if (c == delimiter && !token.empty()) {
                 output.push_back(token);
                 token.clear();

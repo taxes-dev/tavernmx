@@ -22,7 +22,7 @@ namespace tavernmx::client
 {
     void server_message_worker(std::unique_ptr<ServerConnection> server) {
         try {
-            auto last_message_received = std::chrono::system_clock::now();
+            std::chrono::time_point<std::chrono::system_clock> last_message_received = std::chrono::system_clock::now();
             std::optional<std::chrono::time_point<std::chrono::system_clock>> heartbeat_sent{};
 
             // send initial request for rooms list
@@ -35,14 +35,15 @@ namespace tavernmx::client
                     return;
                 }
 
-                auto loop_start = std::chrono::high_resolution_clock::now();
+                const std::chrono::time_point<std::chrono::high_resolution_clock> loop_start =
+                    std::chrono::high_resolution_clock::now();
 
                 std::vector<Message> send_messages{};
 
                 // 1. Read waiting messages on socket
-                if (auto block = server->receive_message()) {
+                if (const std::optional<MessageBlock> block = server->receive_message()) {
                     TMX_INFO("Receive message block: {} bytes", block->payload_size);
-                    for (auto& msg : unpack_messages(block.value())) {
+                    for (const Message& msg : unpack_messages(block.value())) {
                         TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
                         switch (msg.message_type) {
                         case MessageType::HEARTBEAT:
@@ -81,14 +82,15 @@ namespace tavernmx::client
                 }
 
                 // 3. Send queued messages to socket
-                while (auto msg = server->messages_out->pop()) {
+                while (std::optional<Message> msg = server->messages_out->pop()) {
                     TMX_INFO("Send message: {}", static_cast<int32_t>(msg->message_type));
                     send_messages.push_back(std::move(msg.value()));
                 }
                 server->send_messages(std::cbegin(send_messages), std::cend(send_messages));
 
                 // 3. Sleep
-                auto loop_elapsed = std::chrono::high_resolution_clock::now() - loop_start;
+                const std::chrono::time_point<std::chrono::high_resolution_clock>::duration loop_elapsed =
+                    std::chrono::high_resolution_clock::now() - loop_start;
                 if (loop_elapsed < TARGET_SERVER_LOOP_MS) {
                     std::this_thread::sleep_for(TARGET_SERVER_LOOP_MS - loop_elapsed);
                 } else {

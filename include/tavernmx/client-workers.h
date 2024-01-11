@@ -19,13 +19,13 @@ namespace tavernmx::client
     /**
      * @brief Starts the background thread that will process incoming and outgoing
      * messages from/to the server.
-     * @param server Active connection to the server.
+     * @param server Active connection to the server. The worker takes ownership of it.
      */
     void server_message_worker(std::unique_ptr<ServerConnection> server);
 
     /**
      * @brief Configures the chat window and starts the main chat loop.
-     * @param connection Active connection to the server.
+     * @param connection Active connection to the server. The worker takes ownership of it.
      * @param screen The UI chat window to attach to.
      */
     void chat_window_worker(std::unique_ptr<ServerConnection> connection, ChatWindowScreen* screen);

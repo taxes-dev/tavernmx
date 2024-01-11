@@ -19,7 +19,7 @@ namespace tavernmx
         /**
          * @brief Creates a new, empty container.
          */
-        ThreadSafeQueue() = default;
+        ThreadSafeQueue() noexcept = default;
 
         virtual ~ThreadSafeQueue() = default;
 
@@ -58,7 +58,7 @@ namespace tavernmx
         template <class... Args>
         decltype(auto) emplace(Args&&... args) {
             std::lock_guard guard{ this->_mutex };
-            this->_queue.emplace(std::forward<Args...>(args...));
+            return this->_queue.emplace(std::forward<Args...>(args...));
         }
 
         /**

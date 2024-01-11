@@ -32,7 +32,7 @@ namespace tavernmx::client
         };
         /**
          * @brief Create a new ClientError.
-         * @param what description of the error
+         * @param what (copied) description of the error
          * @param inner exception that caused this error
          */
         ClientError(std::string what, const std::exception& inner) noexcept
@@ -113,7 +113,7 @@ namespace tavernmx::client
         /**
          * @brief If specified, a path to a writable location where logging will be written to file.
          */
-        std::string log_file{};
+        std::optional<std::string> log_file{};
         /**
          * @brief Contains zero or more custom server certificates to recognize when connecting.
          */
@@ -130,7 +130,9 @@ namespace tavernmx::client
     class ServerConnection : public BaseConnection
     {
     public:
+        /// Queue for messages received from the server.
         std::shared_ptr<ThreadSafeQueue<messaging::Message>> messages_in;
+        /// Queue for messages to be sent to the server.
         std::shared_ptr<ThreadSafeQueue<messaging::Message>> messages_out;
 
         /**

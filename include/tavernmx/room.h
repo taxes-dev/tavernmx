@@ -60,7 +60,7 @@ namespace tavernmx::rooms
     public:
         /**
          * @brief Create a Room.
-         * @param room_name The room's unique name.
+         * @param room_name (copied) The room's unique name.
          */
         explicit Room(std::string room_name)
             : _room_name{ std::move(room_name) } {
@@ -128,7 +128,7 @@ namespace tavernmx::rooms
         /**
          * @brief Creates a RoomManager.
          */
-        RoomManager() = default;
+        RoomManager() noexcept = default;
 
         RoomManager(const RoomManager&) = delete;
 
@@ -205,7 +205,7 @@ namespace tavernmx::rooms
                 return room->is_destroy_requested();
             }) > 0) {
                 this->_room_names.clear();
-                for (auto& room : this->active_rooms) {
+                for (std::shared_ptr<T>& room : this->active_rooms) {
                     this->_room_names.push_back(room->room_name());
                 }
             }

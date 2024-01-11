@@ -22,7 +22,7 @@ namespace
         json message_json = json::object();
         message_json["message_type"] = message.message_type;
         message_json["values"] = json::object();
-        for (auto& data : message.values) {
+        for (const auto& data : message.values) {
             switch (data.second.index()) {
             case 0:
                 message_json["values"].push_back({ data.first, std::get<std::string>(data.second) });
@@ -113,7 +113,7 @@ namespace tavernmx::messaging
         }
 
         json group_json = json::array();
-        for (auto& message : messages) {
+        for (const Message& message : messages) {
             group_json.push_back(message_to_json(message));
         }
 
@@ -132,9 +132,9 @@ namespace tavernmx::messaging
             return messages;
         }
 
-        auto group_json = json::from_msgpack(block.payload);
+        const json group_json = json::from_msgpack(block.payload);
         if (group_json.is_array()) {
-            for (auto& message_json : group_json) {
+            for (const json& message_json : group_json) {
                 Message message{};
                 message.message_type = message_json["message_type"].get<MessageType>();
                 if (message_json["values"].is_object()) {

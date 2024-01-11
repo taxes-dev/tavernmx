@@ -43,7 +43,7 @@ namespace tavernmx::client
         this->window_center();
         ImGui::Begin(this->window_label.c_str(), &this->window_open);
 
-        const auto window_size = ImGui::GetWindowSize();
+        const ImVec2 window_size = ImGui::GetWindowSize();
         ImGui::BeginChild("Rooms", ImVec2{ window_size.x * 0.2f, 0.0f }, ImGuiChildFlags_None);
         if (ImGui::ListBox("##Rooms1", &this->current_room_index, this->room_names,
             static_cast<int32_t>(this->room_names_size))) {
@@ -108,7 +108,7 @@ namespace tavernmx::client
         std::lock_guard lock_guard{ this->chat_history_mutex };
         auto history = this->chat_room_history.find(this->current_room_name);
         if (history != this->chat_room_history.end()) {
-            for (auto& event : history->second) {
+            for (RoomEvent& event : history->second) {
                 switch (event.event_type) {
                 case RoomEvent::ChatMessage:
                     ImGui::PushStyleColor(ImGuiCol_Text, chat_name_to_color(event.origin_user_name));

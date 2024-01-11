@@ -10,7 +10,7 @@ namespace tavernmx::client
 
     void ClientUi::render() {
         // process push/pop requests to screen stack
-        while (auto op = this->op_queue.pop()) {
+        while (std::optional<PushPopRequest> op = this->op_queue.pop()) {
             switch (op->op) {
             case PushPopRequest::Pop:
                 this->screen_stack.pop();
@@ -23,7 +23,7 @@ namespace tavernmx::client
 
         // call current screen to render
         if (!this->screen_stack.empty()) {
-            auto& screen = this->screen_stack.top();
+            const std::unique_ptr<ClientUiScreen>& screen = this->screen_stack.top();
             screen->update(this);
             screen->render(this, this->viewport_resized);
         }

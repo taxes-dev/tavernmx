@@ -64,7 +64,7 @@ TEST_CASE("RingBuffer: forward iteration, empty") {
     RingBuffer<int32_t, 10> buffer{};
     REQUIRE(buffer.capacity() == 10);
     REQUIRE(buffer.empty());
-    for (auto& elem : buffer) {
+    for (int32_t& elem : buffer) {
         FAIL();
     }
 }

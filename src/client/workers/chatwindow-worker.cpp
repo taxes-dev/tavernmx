@@ -27,7 +27,7 @@ namespace
         if (room_name.empty()) {
             return;
         }
-        const auto selected_room = client_rooms[room_name];
+        const std::shared_ptr<ClientRoom> selected_room = client_rooms[room_name];
         if (selected_room && !selected_room->is_joined) {
             TMX_INFO("Join issued for room: {}", selected_room->room_name());
             messages_out->push(create_room_join(selected_room->room_name()));
@@ -47,8 +47,8 @@ namespace tavernmx::client
     }
 
     void chat_window_worker(std::unique_ptr<ServerConnection> connection, ChatWindowScreen* screen) {
-        auto messages_in = connection->messages_in;
-        auto messages_out = connection->messages_out;
+        std::shared_ptr<ThreadSafeQueue<Message>> messages_in = connection->messages_in,
+            messages_out = connection->messages_out;
 
         // update loop to handle incoming messages
         screen->add_handler(ChatWindowScreen::MSG_UPDATE,
@@ -65,14 +65,15 @@ namespace tavernmx::client
                 chat_screen->waiting_on_server = waiting_on_server;
 
                 // process incoming messages
-                while (auto msg = messages_in->pop()) {
+                while (const std::optional<Message> msg = messages_in->pop()) {
                     TMX_INFO("UI message: {}", static_cast<int32_t>(msg->message_type));
                     switch (msg->message_type) {
                     case MessageType::ROOM_LIST: {
                         std::string current_room_name = chat_screen->current_room_name;
                         client_rooms.clear();
                         for (auto& [key, value] : msg->values) {
-                            if (const auto room = client_rooms.create_room(std::get<std::string>(value))) {
+                            if (const std::shared_ptr<ClientRoom> room =
+                                client_rooms.create_room(std::get<std::string>(value))) {
                                 TMX_INFO("Created room: #{}", room->room_name());
                             } else {
                                 TMX_WARN("Room already exists: #{}", std::get<std::string>(value));
@@ -88,7 +89,7 @@ namespace tavernmx::client
                     case MessageType::ROOM_CREATE: {
                         auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                         std::string current_room_name = chat_screen->current_room_name;
-                        if (const auto room = client_rooms.create_room(room_name)) {
+                        if (const std::shared_ptr<ClientRoom> room = client_rooms.create_room(room_name)) {
                             TMX_INFO("Created room: #{}", room->room_name());
                             chat_screen->update_rooms(client_rooms.room_names());
 
@@ -103,7 +104,7 @@ namespace tavernmx::client
                     case MessageType::ROOM_DESTROY: {
                         auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                         std::string current_room_name = chat_screen->current_room_name;
-                        if (auto room = client_rooms[room_name]) {
+                        if (std::shared_ptr<ClientRoom> room = client_rooms[room_name]) {
                             TMX_INFO("Destroyed room: #{}", room->room_name());
                             room->request_destroy();
                             client_rooms.remove_destroyed_rooms();
@@ -167,7 +168,7 @@ namespace tavernmx::client
                 } else if (command == "/destroy_room"s) {
                     if (tokens.size() != 2) {
                         TMX_WARN("Usage: /destroy_room <room_name>");
-                    } else if (const auto room_to_destroy = client_rooms[tokens[1]]) {
+                    } else if (const std::shared_ptr<ClientRoom> room_to_destroy = client_rooms[tokens[1]]) {
                         messages_out->push(create_room_destroy(room_to_destroy->room_name()));
                     } else {
                         TMX_WARN("destroy_room: '{}' is not a valid room name", tokens[1]);

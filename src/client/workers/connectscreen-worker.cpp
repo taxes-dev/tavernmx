@@ -64,8 +64,9 @@ namespace tavernmx::client
                     const auto conn_screen = dynamic_cast<ConnectUiScreen*>(screen);
                     const int32_t host_port = std::stoi(conn_screen->host_port);
                     TMX_INFO("Connecting to {}:{} ...", conn_screen->host_name, host_port);
-                    connection = std::make_unique<ServerConnection>(conn_screen->host_name, host_port, conn_screen->user_name);
-                    for (auto& cert : config.custom_certificates) {
+                    connection = std::make_unique<ServerConnection>(conn_screen->host_name, host_port,
+                        conn_screen->user_name);
+                    for (const std::string& cert : config.custom_certificates) {
                         connection->load_certificate(cert);
                     }
                     // Connect on background thread so it doesn't block UI
@@ -75,7 +76,7 @@ namespace tavernmx::client
                                 connection->connect();
                                 connection->send_message(create_hello(connection->get_user_name()));
 
-                                if (const auto acknak = connection->wait_for_ack_or_nak()) {
+                                if (const std::optional<Message> acknak = connection->wait_for_ack_or_nak()) {
                                     if (acknak->message_type == MessageType::NAK) {
                                         auto nakmsg = message_value_or<std::string>(*acknak, "error"s);
                                         TMX_WARN("Server denied request to connect: {}", nakmsg);

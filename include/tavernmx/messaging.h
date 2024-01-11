@@ -20,7 +20,7 @@ namespace tavernmx::messaging
         /// Header, for locating the start of a MessageBlock.
         const CharType HEADER[4] = { 't', 'm', 'x', 0x02 };
         /// Size in bytes of payload.
-        uint32_t payload_size = 0;
+        uint32_t payload_size{ 0 };
         /// Payload data.
         std::vector<CharType> payload{};
     };
@@ -115,8 +115,7 @@ namespace tavernmx::messaging
      * method with the accumulated return value passed back into \p payload_offset until that condition is satisfied,
      * i.e. the sum of the return values is equal to payload_size, or the return value is 0 (no bytes processed).
      */
-    size_t
-    apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset = 0);
+    size_t apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset = 0);
 
     /**
      * @brief Converts \p block into a set of bytes.
@@ -156,25 +155,25 @@ namespace tavernmx::messaging
 
     /**
      * @brief Creates a NAK Message struct.
-     * @param error An optional error message
+     * @param error (copied) An optional error message
      * @return Message
      */
-    inline Message create_nak(const std::string& error = std::string{}) {
+    inline Message create_nak(std::string error = std::string{}) {
         return Message{
             .message_type = MessageType::NAK,
-            .values = { { "error", error } }
+            .values = { { "error", std::move(error) } }
         };
     }
 
     /**
      * @brief Create a HELLO Message struct.
-     * @param user_name User name
+     * @param user_name (copied) User name
      * @return Message
      */
-    inline Message create_hello(const std::string& user_name) {
+    inline Message create_hello(std::string user_name) {
         return {
             .message_type = MessageType::HELLO,
-            .values = { { "user_name", user_name } }
+            .values = { { "user_name", std::move(user_name) } }
         };
     }
 
@@ -216,60 +215,61 @@ namespace tavernmx::messaging
 
     /**
      * @brief Create a ROOM_CREATE Message struct to create a new chat room.
-     * @param room_name The room's unique name.
+     * @param room_name (copied) The room's unique name.
      * @return Message
      */
-    inline Message create_room_create(const std::string& room_name) {
+    inline Message create_room_create(std::string room_name) {
         return Message{ .message_type = MessageType::ROOM_CREATE,
-                        .values = { { "room_name", room_name } } };
+                        .values = { { "room_name", std::move(room_name) } } };
     }
 
     /**
      * @brief Create a ROOM_JOIN Message struct to join a chat room.
-     * @param room_name The room's unique name.
+     * @param room_name (copied) The room's unique name.
      * @return Message
      */
-    inline Message create_room_join(const std::string& room_name) {
+    inline Message create_room_join(std::string room_name) {
         return Message{ .message_type = MessageType::ROOM_JOIN,
-                        .values = { { "room_name", room_name } } };
+                        .values = { { "room_name", std::move(room_name) } } };
     }
 
     /**
      * @brief Create a ROOM_DESTROY Message struct to destroy an existing chat room.
-     * @param room_name The room's unique name.
+     * @param room_name (copied) The room's unique name.
      * @return Message
      */
-    inline Message create_room_destroy(const std::string& room_name) {
+    inline Message create_room_destroy(std::string room_name) {
         return Message{ .message_type = MessageType::ROOM_DESTROY,
-                        .values = { { "room_name", room_name } } };
+                        .values = { { "room_name", std::move(room_name) } } };
     }
 
     /**
      * @brief Create a CHAT_SEND Message struct to send a chat message to the server.
-     * @param room_name Target room name.
-     * @param text Line of chat text.
+     * @param room_name (copied) Target room name.
+     * @param text (copied) Line of chat text.
      * @return Message
      */
-    inline Message create_chat_send(const std::string& room_name, const std::string& text) {
+    inline Message create_chat_send(std::string room_name, std::string text) {
         return Message{ .message_type = MessageType::CHAT_SEND,
-                        .values = { { "room_name", room_name }, { "text", text } } };
+                        .values = { { "room_name", std::move(room_name) },
+                                    { "text", std::move(text) } } };
     }
 
     /**
      * @brief Create a CHAT_ECHO Message struct to send a chat message to a client.
-     * @param room_name Origin room name.
-     * @param text Line of chat text.
-     * @param user_name Orign user name.
+     * @param room_name (copied) Origin room name.
+     * @param text (copied) Line of chat text.
+     * @param user_name (copied) Orign user name.
      * @param timestamp Number of seconds since epoch when the event occurred.
      * @return Message
      */
-    inline Message create_chat_echo(const std::string& room_name, const std::string& text,
-        const std::string& user_name, int32_t timestamp) {
+    inline Message create_chat_echo(std::string room_name, std::string text,
+        std::string user_name, int32_t timestamp) {
         return Message{ .message_type = MessageType::CHAT_ECHO,
                         .values = {
-                            { "room_name", room_name },
-                            { "text", text },
-                            { "user_name", user_name },
+                            { "room_name", std::move(room_name) },
+                            { "text", std::move(text) },
+                            { "user_name", std::move(user_name) },
                             { "timestamp", timestamp }
                         } };
     }

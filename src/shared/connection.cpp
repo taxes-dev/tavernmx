@@ -17,7 +17,7 @@ namespace tavernmx
     }
 
     void BaseConnection::send_message(const Message& message) {
-        const auto block = pack_message(message);
+        const MessageBlock block = pack_message(message);
         this->send_message_block(block);
     }
 
@@ -45,15 +45,15 @@ namespace tavernmx
 
     std::optional<Message> BaseConnection::wait_for(MessageType message_type,
         ssl::Milliseconds milliseconds) {
-        const auto start = std::chrono::high_resolution_clock::now();
+        const std::chrono::time_point<std::chrono::high_resolution_clock> start =
+            std::chrono::high_resolution_clock::now();
         ssl::Milliseconds elapsed = 0;
 
         do {
-            if (auto message_block = this->receive_message()) {
-                auto messages = unpack_messages(message_block.value());
-                for (auto& message : messages) {
+            if (std::optional<MessageBlock> message_block = this->receive_message()) {
+                for (Message& message : unpack_messages(message_block.value())) {
                     if (message.message_type == message_type) {
-                        return message;
+                        return std::move(message);
                     }
                 }
             }
@@ -66,15 +66,15 @@ namespace tavernmx
     }
 
     std::optional<Message> BaseConnection::wait_for_ack_or_nak(ssl::Milliseconds milliseconds) {
-        const auto start = std::chrono::high_resolution_clock::now();
+        const std::chrono::time_point<std::chrono::high_resolution_clock> start =
+            std::chrono::high_resolution_clock::now();
         ssl::Milliseconds elapsed = 0;
 
         do {
-            if (auto message_block = this->receive_message()) {
-                auto messages = unpack_messages(message_block.value());
-                for (auto& message : messages) {
+            if (const std::optional<MessageBlock> message_block = this->receive_message()) {
+                for (Message& message : unpack_messages(message_block.value())) {
                     if (message.message_type == MessageType::ACK || message.message_type == MessageType::NAK) {
-                        return message;
+                        return std::move(message);
                     }
                 }
             }

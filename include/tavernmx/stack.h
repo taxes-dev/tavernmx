@@ -18,7 +18,7 @@ namespace tavernmx
         /**
          * @brief Creates a new, empty container.
          */
-        ThreadSafeStack() = default;
+        ThreadSafeStack() noexcept = default;
 
         virtual ~ThreadSafeStack() = default;
 
@@ -57,7 +57,7 @@ namespace tavernmx
         template <class... Args>
         decltype(auto) emplace(Args&&... args) {
             std::lock_guard guard{ this->_mutex };
-            this->_stack.emplace(std::forward<Args...>(args...));
+            return this->_stack.emplace(std::forward<Args...>(args...));
         }
 
         /**

@@ -28,21 +28,16 @@ namespace
 }
 
 int main(int argv, char** argc) {
-    SDL_Window* window = nullptr;
-    SDL_Renderer* renderer = nullptr;
 #ifndef TMX_WINDOWS
     std::signal(SIGPIPE, SIG_IGN);
 #endif
 
     try {
-        ClientConfiguration config{ "client-config.json" };
-
-        spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
-        std::optional<std::string> log_file{};
-        if (!config.log_file.empty()) {
-            log_file = config.log_file;
-        }
-        tavernmx::configure_logging(log_level, log_file);
+        tavernmx::configure_logging(spdlog::level::warn, {});
+        TMX_INFO("Loading configuration ...");
+        const ClientConfiguration config{ "client-config.json" };
+        const spdlog::level::level_enum log_level = spdlog::level::from_str(config.log_level);
+        tavernmx::configure_logging(log_level, config.log_file);
         TMX_INFO("Client starting.");
 
         // Setup SDL
@@ -53,15 +48,19 @@ int main(int argv, char** argc) {
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 
         // Create window with SDL_Renderer graphics context
-        window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        SDL_Window* window = SDL_CreateWindow("tavernmx", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         if (window == nullptr) {
             TMX_ERR("SDL Error creating SDL_Window: {}", SDL_GetError());
+            SDL_Quit();
             return 1;
         }
-        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+        SDL_Renderer* renderer = SDL_CreateRenderer(window, -1,
+            SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
         if (renderer == nullptr) {
             TMX_ERR("SDL Error creating SDL_Renderer: {}", SDL_GetError());
+            SDL_DestroyWindow(window);
+            SDL_Quit();
             return 1;
         }
         SDL_RendererInfo info{};
@@ -91,7 +90,7 @@ int main(int argv, char** argc) {
                 ImFontConfig font_config{};
                 font_config.MergeMode = true;
 
-                auto font_size = static_cast<float>(config.custom_font.font_size);
+                const auto font_size = static_cast<float>(config.custom_font.font_size);
                 custom_font = io.Fonts->AddFontFromFileTTF(config.custom_font.en.c_str(),
                     font_size, nullptr, ranges.Data);
                 if (!config.custom_font.cn.empty() && std::filesystem::exists(config.custom_font.cn)) {
@@ -115,7 +114,7 @@ int main(int argv, char** argc) {
 
         // setup UI handlers
         bool done = false;
-        auto client_ui = std::make_shared<ClientUi>();
+        const auto client_ui = std::make_shared<ClientUi>();
 
         // create initial UI screen
         auto connect_screen = std::make_unique<ConnectUiScreen>();
@@ -148,6 +147,7 @@ int main(int argv, char** argc) {
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
+            // Issue ImGui commands
             if (custom_font) {
                 ImGui::PushFont(custom_font);
             }
@@ -165,20 +165,20 @@ int main(int argv, char** argc) {
             SDL_RenderPresent(renderer);
         }
 
+        // Signal server connection worker in case it's still running
+        shutdown_connection_signal.release();
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+
+        // Shutdown
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+
+        return 0;
     } catch (std::exception& ex) {
         TMX_ERR("Unhandled exception: {}", ex.what());
         TMX_WARN("Client shutdown unexpectedly.");
+        SDL_Quit();
         return 1;
     }
-
-    // Signal server connection worker in case it's still running
-    shutdown_connection_signal.release();
-    std::this_thread::sleep_for(std::chrono::milliseconds{100});
-
-    // Shutdown
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
-    return 0;
 }

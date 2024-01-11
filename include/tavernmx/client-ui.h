@@ -135,7 +135,7 @@ namespace tavernmx::client
 
         /**
          * @brief Sets an error message to be displayed in a dialog box.
-         * @param message std::string
+         * @param message (copied) std::string
          */
         void set_error(std::string message) { this->current_error = std::move(message); };
 
@@ -216,7 +216,7 @@ namespace tavernmx::client
         /**
          * @brief Creates a ConnectUiScreen.
          */
-        ConnectUiScreen() = default;
+        ConnectUiScreen() noexcept = default;
 
         /**
          * @brief Called when the main UI thread wants to render this screen.
@@ -247,7 +247,7 @@ namespace tavernmx::client
         /**
          * @brief Creates a ConnectingUiScreen.
          */
-        ConnectingUiScreen() = default;
+        ConnectingUiScreen() noexcept = default;
 
         /**
          * @brief If the user pressed the "Cancel" button, this will return true.
@@ -334,7 +334,7 @@ namespace tavernmx::client
         /**
          * @brief Insert an \p event into the history for \p room_name.
          * @param room_name Unique name of the room that generated \p event.
-         * @param event tavernmx::rooms::RoomEvent
+         * @param event (copied) tavernmx::rooms::RoomEvent
          * @note Thread-safe.
          */
         void insert_chat_history_event(const std::string& room_name, rooms::RoomEvent event);

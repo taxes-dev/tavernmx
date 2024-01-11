@@ -89,7 +89,7 @@ namespace tavernmx::ssl
     public:
         /**
          * @brief Create a new SslError. 
-         * @param what description of the error
+         * @param what (copied) description of the error
          */
         explicit SslError(std::string what) noexcept
             : what_str{ std::move(what) } {

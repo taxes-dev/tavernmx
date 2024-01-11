@@ -18,7 +18,7 @@ namespace
 
     std::vector<Message> room_events_to_messages(ServerRoom* room) {
         std::vector<Message> messages{};
-        while (const auto event = room->events.pop()) {
+        while (const std::optional<RoomEvent> event = room->events.pop()) {
             switch (event->event_type) {
             case RoomEvent::Created:
             case RoomEvent::Destroyed:
@@ -45,8 +45,8 @@ namespace tavernmx::server
             TMX_INFO("Server worker starting.");
 
             TMX_INFO("Creating initial rooms ...");
-            for (auto& room_name : config.initial_rooms) {
-                if (const auto room = rooms.create_room(room_name)) {
+            for (const std::string& room_name : config.initial_rooms) {
+                if (const std::shared_ptr<ServerRoom> room = rooms.create_room(room_name)) {
                     TMX_INFO("Room created: #{}", room->room_name());
                 } else {
                     TMX_WARN("Room already exists or invalid name: #{}", room_name);
@@ -60,14 +60,16 @@ namespace tavernmx::server
 
             TMX_INFO("Server work loop starting ...");
             while (connections->is_accepting_connections()) {
-                auto loop_start = std::chrono::high_resolution_clock::now();
+                std::chrono::time_point<std::chrono::high_resolution_clock> loop_start =
+                    std::chrono::high_resolution_clock::now();
 
                 // Step 1. Gather all messages from clients and distribute room events
                 std::vector<std::string> new_rooms{};
                 std::vector<std::string> destroyed_rooms{};
-                auto clients = connections->get_active_connections();
-                for (auto& client : clients) {
-                    while (auto msg = client->messages_in.pop()) {
+                const std::vector<std::shared_ptr<ClientConnection>> clients = connections->get_active_connections();
+
+                for (const std::shared_ptr<ClientConnection>& client : clients) {
+                    while (const std::optional<Message> msg = client->messages_in.pop()) {
                         switch (msg->message_type) {
                         case MessageType::ROOM_LIST:
                             // Client requested the room list, send it back
@@ -79,7 +81,7 @@ namespace tavernmx::server
                             // Client wants to create a new room.
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                             if (!room_name.empty()) {
-                                if (const auto room = rooms.create_room(room_name)) {
+                                if (const std::shared_ptr<ServerRoom> room = rooms.create_room(room_name)) {
                                     TMX_INFO("Room created (client request): #{}", room->room_name());
                                     room->events.push({
                                         .event_type = RoomEvent::Created,
@@ -96,7 +98,7 @@ namespace tavernmx::server
                         break;
                         case MessageType::ROOM_JOIN: {
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
-                            if (auto room = rooms[room_name]) {
+                            if (const std::shared_ptr<ServerRoom> room = rooms[room_name]) {
                                 room->join(client);
                             } else {
                                 TMX_WARN("Room does not exist (client join request): #{}", room_name);
@@ -105,7 +107,7 @@ namespace tavernmx::server
                         break;
                         case MessageType::ROOM_DESTROY: {
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
-                            if (auto room = rooms[room_name]) {
+                            if (const std::shared_ptr<ServerRoom> room = rooms[room_name]) {
                                 room->request_destroy();
                                 destroyed_rooms.push_back(std::move(room_name));
                             } else {
@@ -115,7 +117,7 @@ namespace tavernmx::server
                         break;
                         case MessageType::CHAT_SEND: {
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
-                            if (auto room = rooms[room_name]) {
+                            if (const std::shared_ptr<ServerRoom> room = rooms[room_name]) {
                                 room->events.push({
                                     .event_type = RoomEvent::ChatMessage,
                                     .origin_user_name = client->connected_user_name,
@@ -135,26 +137,26 @@ namespace tavernmx::server
 
                 // Step 2. Gather events from rooms and distribute to clients
                 // Step 2a. For new & destroyed rooms, notify everyone of its creation/destruction
-                for (const auto& room_name : new_rooms) {
-                    auto msg = create_room_create(room_name);
-                    for (const auto& client : clients) {
+                for (const std::string& room_name : new_rooms) {
+                    Message msg = create_room_create(room_name);
+                    for (const std::shared_ptr<ClientConnection>& client : clients) {
                         client->messages_out.push(msg);
                     }
                 }
-                for (const auto& room_name : destroyed_rooms) {
-                    auto msg = create_room_destroy(room_name);
-                    for (const auto& client : clients) {
+                for (const std::string& room_name : destroyed_rooms) {
+                    Message msg = create_room_destroy(room_name);
+                    for (const std::shared_ptr<ClientConnection>& client : clients) {
                         client->messages_out.push(msg);
                     }
                 }
 
                 // Step 2b. For existing rooms, only distribute events to joined clients
-                for (auto& room : rooms.rooms()) {
+                for (const std::shared_ptr<ServerRoom>& room : rooms.rooms()) {
                     room->clean_expired_clients();
-                    auto messages = room_events_to_messages(room.get());
-                    for (auto& client_ptr : room->joined_clients) {
-                        if (auto client = client_ptr.lock()) {
-                            for (auto& message : messages) {
+                    std::vector<Message> messages = room_events_to_messages(room.get());
+                    for (const std::weak_ptr<ClientConnection>& client_ptr : room->joined_clients) {
+                        if (const std::shared_ptr<ClientConnection> client = client_ptr.lock()) {
+                            for (const Message& message : messages) {
                                 client->messages_out.push(message);
                             }
                         }
@@ -165,7 +167,8 @@ namespace tavernmx::server
                 rooms.remove_destroyed_rooms();
 
                 // Step 4. Sleep
-                auto loop_elapsed = std::chrono::high_resolution_clock::now() - loop_start;
+                const std::chrono::high_resolution_clock::duration loop_elapsed =
+                    std::chrono::high_resolution_clock::now() - loop_start;
                 if (loop_elapsed < TARGET_SERVER_LOOP_MS) {
                     std::this_thread::sleep_for(TARGET_SERVER_LOOP_MS - loop_elapsed);
                 } else {

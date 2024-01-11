@@ -65,7 +65,7 @@ namespace tavernmx::server
 	std::optional<std::shared_ptr<ClientConnection>> ClientConnectionManager::await_next_connection() {
 		this->begin_accept();
 
-		auto bio = accept_new_tcp_connection(this->accept_bio.get());
+		ssl_unique_ptr<BIO> bio = accept_new_tcp_connection(this->accept_bio.get());
 		if (bio == nullptr) {
 			std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
 			return {};
@@ -75,17 +75,18 @@ namespace tavernmx::server
 		this->cleanup_connections();
 
 		auto connection = std::make_shared<ClientConnection>(std::move(bio));
+
 		{
 			std::lock_guard guard{ this->active_connections_mutex };
-
 			this->active_connections.push_back(connection);
 		}
+
 		return connection;
 	}
 
 	void ClientConnectionManager::shutdown() noexcept {
 		std::lock_guard guard{ this->active_connections_mutex };
-		for (auto& connection : this->active_connections) {
+		for (const std::shared_ptr<ClientConnection>& connection : this->active_connections) {
 			connection->shutdown();
 		}
 		this->active_connections.clear();
