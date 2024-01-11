@@ -16,6 +16,9 @@ using namespace tavernmx::client;
 using namespace tavernmx::messaging;
 using namespace tavernmx::rooms;
 
+/// Signals that the connection to the server should be cleanly shutdown.
+extern std::binary_semaphore shutdown_connection_signal;
+
 namespace
 {
     /// Initial pixel width of the main window.
@@ -167,6 +170,10 @@ int main(int argv, char** argc) {
         TMX_WARN("Client shutdown unexpectedly.");
         return 1;
     }
+
+    // Signal server connection worker in case it's still running
+    shutdown_connection_signal.release();
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
 
     // Shutdown
     SDL_DestroyRenderer(renderer);
