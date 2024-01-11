@@ -279,6 +279,8 @@ namespace tavernmx::client
         static constexpr ClientUiMessage MSG_ROOM_CHANGED = 1;
         /// Message issued whenever the user inputs a new chat line.
         static constexpr ClientUiMessage MSG_CHAT_SUBMIT = 2;
+        /// Message issued whenever the chat window is closed.
+        static constexpr ClientUiMessage MSG_CHAT_CLOSED = 3;
 
         /// Currently selected room (index).
         int32_t current_room_index{ 0 };
@@ -298,7 +300,7 @@ namespace tavernmx::client
          * @param user_name The currently connected user name, for display purposes only.
          */
         ChatWindowScreen(const std::string& host_name, const std::string& user_name) {
-            this->window_label =  user_name + "@" + host_name;
+            this->window_label = user_name + "@" + host_name;
             this->room_names = new char*[0];
         };
 
@@ -345,6 +347,7 @@ namespace tavernmx::client
         std::mutex chat_history_mutex{};
         bool reset_scroll_pos{ false };
         bool reset_text_focus{ true };
+        bool window_open{ true };
 
         void render_chat_history();
     };

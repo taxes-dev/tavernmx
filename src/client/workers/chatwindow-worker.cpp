@@ -7,6 +7,8 @@ using namespace tavernmx::rooms;
 
 /// Signals that the connection to the server has been ended.
 extern std::binary_semaphore connection_ended_signal;
+/// Signals that the connection to the server should be cleanly shutdown.
+extern std::binary_semaphore shutdown_connection_signal;
 /// This flag will be set to let the UI know we're waiting on a response from the server.
 extern bool waiting_on_server;
 
@@ -136,11 +138,13 @@ namespace tavernmx::client
                     }
                 }
             });
+
         screen->add_handler(ChatWindowScreen::MSG_ROOM_CHANGED, [messages_out](ClientUi*, ClientUiScreen* screen) {
             const auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);
             TMX_INFO("Chat room changed: {}", chat_screen->current_room_name);
             issue_room_join_if_needed(chat_screen->current_room_name, messages_out.get());
         });
+
         screen->add_handler(ChatWindowScreen::MSG_CHAT_SUBMIT, [messages_out](ClientUi*, ClientUiScreen* screen) {
             const auto chat_screen = dynamic_cast<ChatWindowScreen*>(screen);
             if (chat_screen->chat_input.empty()) {
@@ -178,6 +182,11 @@ namespace tavernmx::client
                 TMX_WARN("No room selected.");
             }
             chat_screen->chat_input.clear();
+        });
+
+        screen->add_handler(ChatWindowScreen::MSG_CHAT_CLOSED, [](ClientUi* ui, ClientUiScreen*) {
+            ui->pop_screen();
+            shutdown_connection_signal.release();
         });
 
         // push connection to background thread for message handling

@@ -6,6 +6,8 @@ using namespace tavernmx::rooms;
 
 /// Signals that the connection to the server has been ended.
 std::binary_semaphore connection_ended_signal{0};
+/// Signals that the connection to the server should be cleanly shutdown.
+std::binary_semaphore shutdown_connection_signal{0};
 /// This flag will be set to let the UI know we're waiting on a response from the server.
 bool waiting_on_server{false};
 
@@ -27,6 +29,12 @@ namespace tavernmx::client
             server->send_message(create_room_list());
 
             while (server->is_connected()) {
+                if (shutdown_connection_signal.try_acquire()) {
+                    TMX_INFO("Connection worker shutting down by request.");
+                    server->shutdown();
+                    return;
+                }
+
                 auto loop_start = std::chrono::high_resolution_clock::now();
 
                 std::vector<Message> send_messages{};
@@ -89,10 +97,11 @@ namespace tavernmx::client
                 }
             }
             TMX_INFO("Connection worker exiting.");
+            connection_ended_signal.release();
         } catch (std::exception& ex) {
             TMX_ERR("Connection worker exited with exception: {}", ex.what());
+            connection_ended_signal.release();
         }
-        connection_ended_signal.release();
     }
 
 }

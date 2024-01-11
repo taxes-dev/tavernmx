@@ -35,9 +35,13 @@ namespace
 namespace tavernmx::client
 {
     void ChatWindowScreen::render(ClientUi* ui, bool viewport_resized) {
+        if (!this->window_open) {
+            return;
+        }
+
         this->window_size(0.8f, 0.8f, viewport_resized);
         this->window_center();
-        ImGui::Begin(this->window_label.c_str(), nullptr);
+        ImGui::Begin(this->window_label.c_str(), &this->window_open);
 
         const auto window_size = ImGui::GetWindowSize();
         ImGui::BeginChild("Rooms", ImVec2{ window_size.x * 0.2f, 0.0f }, ImGuiChildFlags_None);
@@ -94,6 +98,10 @@ namespace tavernmx::client
 
         // Window
         ImGui::End();
+
+        if (!this->window_open) {
+            this->call_handler(MSG_CHAT_CLOSED, ui);
+        }
     }
 
     void ChatWindowScreen::render_chat_history() {
