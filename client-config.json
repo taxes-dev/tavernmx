@@ -3,5 +3,12 @@
   "log_level": "info",
   "custom_certificates": [
     "server-certificate.pem"
-  ]
+  ],
+  "custom_font": {
+    "font_size": 16,
+    "en": "noto/NotoSans-Regular.ttf",
+    "jp": "noto/NotoSansJP-Regular.ttf",
+    "kr": "noto/NotoSansKR-Regular.ttf",
+    "cn": "noto/NotoSansTC-Regular.ttf"
+  }
 }

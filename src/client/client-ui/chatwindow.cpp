@@ -106,7 +106,7 @@ namespace tavernmx::client
                     ImGui::PushStyleColor(ImGuiCol_Text, chat_name_to_color(event.origin_user_name));
                     ImGui::Text("%s", event.origin_user_name.c_str());
                     ImGui::SameLine();
-                    ImGui::Text(" at %s", event.timestamp_text.c_str());
+                    ImGui::Text("at %s", event.timestamp_text.c_str());
                     ImGui::PopStyleColor();
                     ImGui::Text("%s", event.event_text.c_str());
                     ImGui::Spacing();

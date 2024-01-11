@@ -65,6 +65,32 @@ namespace tavernmx::client
     class ClientConfiguration
     {
     public:
+        /// Container for custom font settings.
+        struct CustomFontConfiguration
+        {
+            /**
+             * @brief If specified, set size for the custom font in pixels. Defaults to 12.
+             */
+            uint32_t font_size{};
+            /**
+             * @brief Custom font file (TTF) to use for Latin glyphs. When specifying custom fonts, this one
+             * is required at minimum.
+             */
+            std::string en{};
+            /**
+             * @brief If specified, uses a custom font file (TTF) for Japanese glyphs.
+             */
+            std::string jp{};
+            /**
+             * @brief If specified, uses a custom font file (TTF) for Korean glyphs.
+             */
+            std::string kr{};
+            /**
+             * @brief If specified, uses a custom font file (TTF) for Chinese glyphs.
+             */
+            std::string cn{};
+        };
+
         /**
          * @brief Initializes ClientConfiguration by loading the .json file stored at \p config_path.
          * @param config_path file system path to the client configuration .json
@@ -92,6 +118,10 @@ namespace tavernmx::client
          * @brief Contains zero or more custom server certificates to recognize when connecting.
          */
         std::vector<std::string> custom_certificates{};
+        /**
+         * @brief If specified, override the default font with these font(s).
+         */
+        CustomFontConfiguration custom_font{};
     };
 
     /**

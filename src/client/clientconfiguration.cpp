@@ -27,6 +27,14 @@ namespace tavernmx::client
             } else if (config_data["custom_certificates"].is_string()) {
                 this->custom_certificates.push_back(config_data["custom_certificates"]);
             }
+            if (config_data["custom_font"].is_object()) {
+                auto& font_data = config_data["custom_font"];
+                this->custom_font.font_size = font_data.value("font_size", 12u);
+                this->custom_font.en = font_data.value("en", ""s);
+                this->custom_font.jp = font_data.value("jp", ""s);
+                this->custom_font.kr = font_data.value("kr", ""s);
+                this->custom_font.cn = font_data.value("cn", ""s);
+            }
         } catch (json::parse_error& ex) {
             throw ClientError{ "Unable to parse config file", ex };
         }

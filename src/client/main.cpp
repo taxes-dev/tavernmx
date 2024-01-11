@@ -1,4 +1,5 @@
 #include <csignal>
+#include <filesystem>
 #include <future>
 #include <iostream>
 #include <semaphore>
@@ -73,6 +74,42 @@ int main(int argv, char** argc) {
         ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
         ImGui_ImplSDLRenderer2_Init(renderer);
 
+        // load custom fonts if specified
+        ImFont* custom_font{ nullptr };
+        if (!config.custom_font.en.empty()) {
+            if (std::filesystem::exists(config.custom_font.en)) {
+                ImVector<ImWchar> ranges;
+                ImFontGlyphRangesBuilder builder;
+                builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+                builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+                builder.AddRanges(io.Fonts->GetGlyphRangesGreek());
+                builder.BuildRanges(&ranges);
+
+                ImFontConfig font_config{};
+                font_config.MergeMode = true;
+
+                auto font_size = static_cast<float>(config.custom_font.font_size);
+                custom_font = io.Fonts->AddFontFromFileTTF(config.custom_font.en.c_str(),
+                    font_size, nullptr, ranges.Data);
+                if (!config.custom_font.cn.empty() && std::filesystem::exists(config.custom_font.cn)) {
+                    io.Fonts->AddFontFromFileTTF(config.custom_font.cn.c_str(),
+                        font_size, &font_config, io.Fonts->GetGlyphRangesChineseFull());
+                }
+                if (!config.custom_font.jp.empty() && std::filesystem::exists(config.custom_font.jp)) {
+                    io.Fonts->AddFontFromFileTTF(config.custom_font.jp.c_str(),
+                        font_size, &font_config, io.Fonts->GetGlyphRangesJapanese());
+                }
+                if (!config.custom_font.kr.empty() && std::filesystem::exists(config.custom_font.kr)) {
+                    io.Fonts->AddFontFromFileTTF(config.custom_font.kr.c_str(),
+                        font_size, &font_config, io.Fonts->GetGlyphRangesKorean());
+                }
+
+                io.Fonts->Build();
+            } else {
+                TMX_WARN("Font file '{}' does not exist.", config.custom_font.en);
+            }
+        }
+
         // setup UI handlers
         bool done = false;
         auto client_ui = std::make_shared<ClientUi>();
@@ -108,7 +145,13 @@ int main(int argv, char** argc) {
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
+            if (custom_font) {
+                ImGui::PushFont(custom_font);
+            }
             client_ui->render();
+            if (custom_font) {
+                ImGui::PopFont();
+            }
 
             // Render and present
             ImGui::Render();
@@ -118,6 +161,7 @@ int main(int argv, char** argc) {
             ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
             SDL_RenderPresent(renderer);
         }
+
     } catch (std::exception& ex) {
         TMX_ERR("Unhandled exception: {}", ex.what());
         TMX_WARN("Client shutdown unexpectedly.");
