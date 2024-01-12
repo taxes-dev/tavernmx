@@ -15,7 +15,7 @@ namespace tavernmx::server
         try {
             // Expect client to send HELLO as the first message
             if (std::optional<Message> hello = client->wait_for(MessageType::HELLO)) {
-                client->connected_user_name = std::get<std::string>(hello->values["user_name"s]);
+                client->connected_user_name = message_value_or<std::string>(*hello, "user_name"s);
                 TMX_INFO("Client connected: {}", client->connected_user_name);
                 // TODO: validate user name
                 client->send_message(create_ack());

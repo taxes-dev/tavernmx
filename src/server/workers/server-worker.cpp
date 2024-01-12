@@ -53,13 +53,17 @@ namespace
         Message history_msg = create_room_history(room_name, 0);
         size_t event_count = 0;
         if (room_history.contains(room_name)) {
+            history_msg.values["events"s] = nlohmann::json::array();
             for (RoomEvent& event : room_history[room_name]) {
-                // TODO: figure out a better way to do arrays inside messages
-                history_msg.values["timestamp."s + std::to_string(event_count)] = static_cast<int32_t>(event.timestamp.
+                nlohmann::json event_json = nlohmann::json::object();
+                event_json["timestamp"s] = static_cast<int32_t>(event.timestamp.
                     time_since_epoch().count());
-                history_msg.values["user_name."s + std::to_string(event_count)] = event.origin_user_name;
-                history_msg.values["text."s + std::to_string(event_count)] = event.event_text;
-                ++event_count;
+                event_json["user_name"s] = event.origin_user_name;
+                event_json["text"] = event.event_text;
+                history_msg.values["events"s].push_back(std::move(event_json));
+                if (++event_count == max_event_count) {
+                    break;
+                }
             }
         }
         history_msg.values["event_count"s] = static_cast<int32_t>(event_count);

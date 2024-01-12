@@ -37,17 +37,27 @@ namespace
         }
     }
 
+    /**
+     * @brief Take a \p message of type ROOM_HISTORY and convert it back to a set of events.
+     * @param message Message
+     * @return std::vector<ClientRoomEvent>
+     */
     std::vector<ClientRoomEvent> room_history_message_to_events(const Message& message) {
         const auto event_count = static_cast<size_t>(message_value_or<int32_t>(message, "event_count"s));
         std::vector<ClientRoomEvent> events{};
-        for (size_t i = 0; i < event_count; ++i) {
+        if (event_count < 1) {
+            return events;
+        }
+
+        for (const auto& item : message.values["events"s].items()) {
+            const nlohmann::json& json_value = item.value();
             ClientRoomEvent event{
                 {
                     .timestamp = EventTimeStamp{
-                        std::chrono::seconds{ message_value_or(message, "timestamp."s + std::to_string(i), 0) } },
+                        std::chrono::seconds{ json_value["timestamp"s].get<int32_t>() } },
                     .event_type = RoomEvent::ChatMessage,
-                    .origin_user_name = message_value_or(message, "user_name."s + std::to_string(i), "(unknown)"s),
-                    .event_text = message_value_or(message, "text."s + std::to_string(i), ""s),
+                    .origin_user_name = json_value.value("user_name"s, "(unknown)"s),
+                    .event_text = json_value.value("text", ""s),
                 }
             };
             event.timestamp_text = fmt::format("{:%0I:%M %p}",
@@ -93,12 +103,12 @@ namespace tavernmx::client
                     case MessageType::ROOM_LIST: {
                         std::string current_room_name = chat_screen->current_room_name;
                         client_rooms.clear();
-                        for (auto& [key, value] : msg->values) {
+                        for (auto& [key, value] : msg->values.items()) {
                             if (const std::shared_ptr<ClientRoom> room =
-                                client_rooms.create_room(std::get<std::string>(value))) {
+                                client_rooms.create_room(value.get<std::string>())) {
                                 TMX_INFO("Created room: #{}", room->room_name());
                             } else {
-                                TMX_WARN("Room already exists: #{}", std::get<std::string>(value));
+                                TMX_WARN("Room already exists: #{}", value.get<std::string>());
                             }
                         }
                         chat_screen->update_rooms(client_rooms.room_names());

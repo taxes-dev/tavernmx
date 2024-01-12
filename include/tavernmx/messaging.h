@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include "nlohmann/json.hpp"
 
 namespace tavernmx::messaging
 {
@@ -77,34 +78,36 @@ namespace tavernmx::messaging
         /// The type of message sent.
         MessageType message_type{ MessageType::Invalid };
 
-        /// Arbitray map of parameters associated with the message. Each key can contain string, int, or bool.
-        std::unordered_map<std::string, std::variant<std::string, int32_t, bool>> values{};
+        /// JSON map for arbitrary values.
+        nlohmann::json values{};
     };
 
     /**
-     * @brief Check if \p message contains a value specified by \p key.
+     * @brief Check if \p message contains a root-level value specified by \p key.
      * @param message Message
      * @param key std::string
      * @return true if \p key is present in the values collection of \p message, otherwise false.
      */
     inline bool message_has_value(const Message& message, const std::string& key) {
-        return message.values.contains(key);
+        return message.values.is_object() && message.values.contains(key);
     }
 
     /**
-     * @brief Attempt to retrieve the value specified by \p key in \p message.
-     * @tparam T One of the types allowed by the Message values collection: std::string, int32_t, or bool.
+     * @brief Attempt to retrieve the root-level value specified by \p key in \p message.
+     * @tparam T A type supported by the JSON library. Must be default constructible.
      * @param message Message
      * @param key std::string
      * @param default_value A default value to return if \p key isn't found.
      * @return The value associated with \p key if it is present, otherwise \p default_value.
      */
     template <typename T>
-        requires std::same_as<T, std::string> || std::same_as<T, int32_t> || std::same_as<T, bool>
+        requires std::is_default_constructible_v<T>
     T message_value_or(const Message& message, const std::string& key, const T& default_value = T{}) {
-        if (message.values.contains(key) &&
-            std::holds_alternative<T>(message.values.at(key))) {
-            return std::get<T>(message.values.at(key));
+        if (message.values.is_object() &&
+            message.values.contains(key) &&
+            message.values[key].is_primitive() &&
+            !message.values[key].is_null()) {
+            return message.values[key].get<T>();
         }
         return default_value;
     }

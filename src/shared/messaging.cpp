@@ -2,7 +2,6 @@
 #include <bit>
 #include <cassert>
 #include <functional>
-#include "nlohmann/json.hpp"
 #include "tavernmx/messaging.h"
 #include "tavernmx/platform.h"
 
@@ -21,22 +20,7 @@ namespace
     json message_to_json(const tavernmx::messaging::Message& message) {
         json message_json = json::object();
         message_json["message_type"] = message.message_type;
-        message_json["values"] = json::object();
-        for (const auto& data : message.values) {
-            switch (data.second.index()) {
-            case 0:
-                message_json["values"].push_back({ data.first, std::get<std::string>(data.second) });
-                break;
-            case 1:
-                message_json["values"].push_back({ data.first, std::get<int32_t>(data.second) });
-                break;
-            case 2:
-                message_json["values"].push_back({ data.first, std::get<bool>(data.second) });
-                break;
-            default:
-                assert(false && "Unknown value variant index");
-            }
-        }
+        message_json["values"] = message.values;
         return message_json;
     }
 }
@@ -137,19 +121,7 @@ namespace tavernmx::messaging
             for (const json& message_json : group_json) {
                 Message message{};
                 message.message_type = message_json["message_type"].get<MessageType>();
-                if (message_json["values"].is_object()) {
-                    for (auto& values_json : message_json["values"].items()) {
-                        if (values_json.value().is_string()) {
-                            message.values[values_json.key()] = values_json.value().get<std::string>();
-                        } else if (values_json.value().is_number_integer()) {
-                            message.values[values_json.key()] = values_json.value().get<int32_t>();
-                        } else if (values_json.value().is_boolean()) {
-                            message.values[values_json.key()] = values_json.value().get<bool>();
-                        } else {
-                            assert(false && "Unexpected type in message values");
-                        }
-                    }
-                }
+                message.values = message_json["values"];
                 messages.push_back(std::move(message));
             }
         }
