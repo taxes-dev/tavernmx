@@ -108,7 +108,7 @@ namespace tavernmx::client
         std::lock_guard lock_guard{ this->chat_history_mutex };
         auto history = this->chat_room_history.find(this->current_room_name);
         if (history != this->chat_room_history.end()) {
-            for (RoomEvent& event : history->second) {
+            for (ClientRoomEvent& event : history->second) {
                 switch (event.event_type) {
                 case RoomEvent::ChatMessage:
                     ImGui::PushStyleColor(ImGuiCol_Text, chat_name_to_color(event.origin_user_name));
@@ -126,7 +126,7 @@ namespace tavernmx::client
         }
     }
 
-    void ChatWindowScreen::insert_chat_history_event(const std::string& room_name, rooms::RoomEvent event) {
+    void ChatWindowScreen::insert_chat_history_event(const std::string& room_name, ClientRoomEvent event) {
         std::lock_guard lock_guard{ this->chat_history_mutex };
         if (this->chat_room_history.find(room_name) == this->chat_room_history.end()) {
             this->chat_room_history[room_name] = {};

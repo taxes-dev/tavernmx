@@ -10,9 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "client-rooms.h"
 #include "queue.h"
 #include "ringbuffer.h"
-#include "room.h"
 #include "stack.h"
 
 namespace tavernmx::client
@@ -334,16 +334,16 @@ namespace tavernmx::client
         /**
          * @brief Insert an \p event into the history for \p room_name.
          * @param room_name Unique name of the room that generated \p event.
-         * @param event (copied) tavernmx::rooms::RoomEvent
+         * @param event (copied) tavernmx::rooms::ClientRoomEvent
          * @note Thread-safe.
          */
-        void insert_chat_history_event(const std::string& room_name, rooms::RoomEvent event);
+        void insert_chat_history_event(const std::string& room_name, rooms::ClientRoomEvent event);
 
     private:
         std::string window_label{};
         char** room_names{ nullptr };
         size_t room_names_size{ 0 };
-        std::unordered_map<std::string, RingBuffer<rooms::RoomEvent, CHAT_ROOM_HISTORY_SIZE>> chat_room_history{};
+        std::unordered_map<std::string, RingBuffer<rooms::ClientRoomEvent, CHAT_ROOM_HISTORY_SIZE>> chat_room_history{};
         std::mutex chat_history_mutex{};
         bool reset_scroll_pos{ false };
         bool reset_text_focus{ true };

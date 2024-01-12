@@ -121,12 +121,14 @@ namespace tavernmx::client
                     break;
                     case MessageType::CHAT_ECHO: {
                         auto room_name = message_value_or<std::string>(*msg, "room_name");
-                        RoomEvent event{
-                            .timestamp = EventTimeStamp{
-                                std::chrono::seconds{ message_value_or(*msg, "timestamp"s, 0) } },
-                            .event_type = RoomEvent::ChatMessage,
-                            .origin_user_name = message_value_or(*msg, "user_name"s, "(unknown)"s),
-                            .event_text = message_value_or(*msg, "text"s, ""s),
+                        ClientRoomEvent event{
+                            {
+                                .timestamp = EventTimeStamp{
+                                    std::chrono::seconds{ message_value_or(*msg, "timestamp"s, 0) } },
+                                .event_type = RoomEvent::ChatMessage,
+                                .origin_user_name = message_value_or(*msg, "user_name"s, "(unknown)"s),
+                                .event_text = message_value_or(*msg, "text"s, ""s),
+                            }
                         };
                         event.timestamp_text = fmt::format("{:%0I:%M %p}",
                             fmt::localtime(event.timestamp.time_since_epoch().count()));

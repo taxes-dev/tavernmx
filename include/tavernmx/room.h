@@ -45,11 +45,6 @@ namespace tavernmx::rooms
         std::string origin_user_name{};
         /// Event text to be displayed, if any.
         std::string event_text{};
-
-#ifdef TMX_CLIENT
-        /// (Client only.) Translation of timestamp into displayable format.
-        std::string timestamp_text{};
-#endif
     };
 
     /**
