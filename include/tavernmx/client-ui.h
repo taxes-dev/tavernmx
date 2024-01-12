@@ -339,6 +339,28 @@ namespace tavernmx::client
          */
         void insert_chat_history_event(const std::string& room_name, rooms::ClientRoomEvent event);
 
+        /**
+         * @brief Replace the chat history for \p room_name with a new set of events.
+         * @tparam Iterator Forward iterator of tavernmx::rooms::ClientRoomEvent values.
+         * @param room_name Unique name of the room whose history will be replaced.
+         * @param begin Start of range pointing to ClientRoomEvent values.
+         * @param end End of range pointing to ClientRoomEvent values.
+         */
+        template <typename Iterator>
+            requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, rooms::ClientRoomEvent>
+        void rewrite_chat_history(const std::string& room_name, Iterator begin, Iterator end) {
+            std::lock_guard lock_guard{ this->chat_history_mutex };
+            if (this->chat_room_history.find(room_name) == this->chat_room_history.end()) {
+                this->chat_room_history[room_name] = {};
+            } else {
+                this->chat_room_history[room_name].reset();
+            }
+            for (auto it = begin; it != end; ++it) {
+                this->chat_room_history[room_name].insert(std::move(*it));
+            }
+            this->reset_scroll_pos = room_name == this->current_room_name;
+        }
+
     private:
         std::string window_label{};
         char** room_names{ nullptr };

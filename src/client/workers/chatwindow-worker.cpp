@@ -32,7 +32,29 @@ namespace
             TMX_INFO("Join issued for room: {}", selected_room->room_name());
             messages_out->push(create_room_join(selected_room->room_name()));
             selected_room->is_joined = true;
+            TMX_INFO("Requesting room history for room: {}", selected_room->room_name());
+            messages_out->push(create_room_history(selected_room->room_name()));
         }
+    }
+
+    std::vector<ClientRoomEvent> room_history_message_to_events(const Message& message) {
+        const auto event_count = static_cast<size_t>(message_value_or<int32_t>(message, "event_count"s));
+        std::vector<ClientRoomEvent> events{};
+        for (size_t i = 0; i < event_count; ++i) {
+            ClientRoomEvent event{
+                {
+                    .timestamp = EventTimeStamp{
+                        std::chrono::seconds{ message_value_or(message, "timestamp."s + std::to_string(i), 0) } },
+                    .event_type = RoomEvent::ChatMessage,
+                    .origin_user_name = message_value_or(message, "user_name."s + std::to_string(i), "(unknown)"s),
+                    .event_text = message_value_or(message, "text."s + std::to_string(i), ""s),
+                }
+            };
+            event.timestamp_text = fmt::format("{:%0I:%M %p}",
+                fmt::localtime(event.timestamp.time_since_epoch().count()));
+            events.push_back(std::move(event));
+        }
+        return events;
     }
 }
 
@@ -116,6 +138,14 @@ namespace tavernmx::client
                                 // Re-select previous room
                                 chat_screen->select_room_by_name(current_room_name);
                             }
+                        }
+                    }
+                    break;
+                    case MessageType::ROOM_HISTORY: {
+                        auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                        if (std::shared_ptr<ClientRoom> room = client_rooms[room_name]) {
+                            std::vector<ClientRoomEvent> events = room_history_message_to_events(*msg);
+                            chat_screen->rewrite_chat_history(room->room_name(), std::begin(events), std::end(events));
                         }
                     }
                     break;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -54,6 +55,8 @@ namespace tavernmx::messaging
         ROOM_JOIN = 0x3002,
         /// Sent by client to request deletion of a room, sent by server to notify of a deleted room.
         ROOM_DESTROY = 0x3003,
+        /// Sent by client to request the chat history for a room, sent by server to deliver the history payload.
+        ROOM_HISTORY = 0x3004,
 
         // Chat-related messages
         /// Client sending a single line of chat to a room.
@@ -61,6 +64,9 @@ namespace tavernmx::messaging
         /// Server echoing a single line of chat to a room.
         CHAT_ECHO = 0x4001,
     };
+
+    /// Maximum number of entries that can be retrieved as part of MessageType::ROOM_HISTORY.
+    constexpr int32_t ROOM_HISTORY_MAX_ENTRIES = 100;
 
     /**
      * @brief Structure for an individual message.
@@ -241,6 +247,20 @@ namespace tavernmx::messaging
     inline Message create_room_destroy(std::string room_name) {
         return Message{ .message_type = MessageType::ROOM_DESTROY,
                         .values = { { "room_name", std::move(room_name) } } };
+    }
+
+    /**
+     * @brief Create a ROOM_HISTORY Message struct to request room history.
+     * @param room_name (copied) The room's unique name.
+     * @param event_count The maximum number of events to retrieve.
+     * @return Message
+     * @note \p event_count must be between 0 and ROOM_HISTORY_MAX_ENTRIES (inclusive).
+     */
+    inline Message create_room_history(std::string room_name, int32_t event_count = ROOM_HISTORY_MAX_ENTRIES) {
+        assert(event_count >= 0 && event_count <= ROOM_HISTORY_MAX_ENTRIES);
+        return Message{ .message_type = MessageType::ROOM_HISTORY,
+                        .values = { { "room_name", std::move(room_name) },
+                                    { "event_count", event_count } } };
     }
 
     /**

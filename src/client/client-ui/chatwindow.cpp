@@ -148,6 +148,7 @@ namespace tavernmx::client
     }
 
     void ChatWindowScreen::update_rooms(const std::vector<std::string>& room_name_list) {
+        // reset list of rooms for display
         delete[] this->room_names;
         this->room_names_size = room_name_list.size();
         this->current_room_index = 0;
@@ -157,10 +158,21 @@ namespace tavernmx::client
             this->room_names[i][0] = '#';
             std::strcpy(this->room_names[i] + 1, room_name_list[i].c_str());
         }
+
+        // choose the first room, if one exists
         if (this->room_names_size > 0) {
             this->current_room_name = std::string{ this->room_names[0] + 1 };
         } else {
             this->current_room_name.clear();
+        }
+
+        // clean up history structure in case a room no longer exists
+        {
+            std::lock_guard lock_guard{ this->chat_history_mutex };
+            std::erase_if(this->chat_room_history, [&room_name_list](const auto& item) {
+                return std::find(std::begin(room_name_list), std::end(room_name_list), item.first) ==
+                    room_name_list.end();
+            });
         }
     }
 

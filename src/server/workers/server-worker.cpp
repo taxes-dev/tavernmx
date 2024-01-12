@@ -13,9 +13,14 @@ std::binary_semaphore server_shutdown_signal{ 0 };
 
 namespace
 {
+    /// Maximum amount of chat room history to track.
+    constexpr size_t CHAT_ROOM_HISTORY_SIZE = 1000;
+    using RoomHistory = std::unordered_map<std::string, tavernmx::RingBuffer<RoomEvent, CHAT_ROOM_HISTORY_SIZE>>;
+
     /// Target maximum ms for loop processing.
     constexpr std::chrono::milliseconds TARGET_SERVER_LOOP_MS{ 20ll };
 
+    /// Convert RoomEvents in \p room into Message objects.
     std::vector<Message> room_events_to_messages(ServerRoom* room) {
         std::vector<Message> messages{};
         while (const std::optional<RoomEvent> event = room->events.pop()) {
@@ -35,6 +40,31 @@ namespace
         }
         return messages;
     }
+
+    /// Record \p room_event as part of the history of \p room_name.
+    void insert_event_into_room_history(RoomHistory& room_history, const std::string& room_name, RoomEvent room_event) {
+        if (!room_history.contains(room_name)) {
+            room_history[room_name] = {};
+        }
+        room_history[room_name].insert(std::move(room_event));
+    }
+
+    Message get_room_history(RoomHistory& room_history, const std::string& room_name, size_t max_event_count) {
+        Message history_msg = create_room_history(room_name, 0);
+        size_t event_count = 0;
+        if (room_history.contains(room_name)) {
+            for (RoomEvent& event : room_history[room_name]) {
+                // TODO: figure out a better way to do arrays inside messages
+                history_msg.values["timestamp."s + std::to_string(event_count)] = static_cast<int32_t>(event.timestamp.
+                    time_since_epoch().count());
+                history_msg.values["user_name."s + std::to_string(event_count)] = event.origin_user_name;
+                history_msg.values["text."s + std::to_string(event_count)] = event.event_text;
+                ++event_count;
+            }
+        }
+        history_msg.values["event_count"s] = static_cast<int32_t>(event_count);
+        return history_msg;
+    }
 }
 
 namespace tavernmx::server
@@ -42,6 +72,8 @@ namespace tavernmx::server
     void server_worker(const ServerConfiguration& config, std::shared_ptr<ClientConnectionManager> connections) {
         try {
             RoomManager<ServerRoom> rooms{};
+            RoomHistory room_history{};
+
             TMX_INFO("Server worker starting.");
 
             TMX_INFO("Creating initial rooms ...");
@@ -115,14 +147,28 @@ namespace tavernmx::server
                             }
                         }
                         break;
+                        case MessageType::ROOM_HISTORY: {
+                            auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                            auto event_count = message_value_or<std::int32_t>(*msg, "event_count"s);
+                            const std::shared_ptr<ServerRoom> room = rooms[room_name];
+                            if (event_count >= 0 && event_count <= ROOM_HISTORY_MAX_ENTRIES && room) {
+                                client->messages_out.push(
+                                    get_room_history(room_history, room->room_name(), event_count));
+                            } else {
+                                TMX_WARN("Invalid room history request: name '{}', count {}", room_name, event_count);
+                            }
+                        }
+                        break;
                         case MessageType::CHAT_SEND: {
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                             if (const std::shared_ptr<ServerRoom> room = rooms[room_name]) {
-                                room->events.push({
+                                RoomEvent room_event{
                                     .event_type = RoomEvent::ChatMessage,
                                     .origin_user_name = client->connected_user_name,
                                     .event_text = message_value_or<std::string>(*msg, "text"s)
-                                });
+                                };
+                                insert_event_into_room_history(room_history, room->room_name(), room_event);
+                                room->events.push(std::move(room_event));
                             } else {
                                 TMX_WARN("Client sent message to unknown room: {}", room_name);
                             }
@@ -164,6 +210,9 @@ namespace tavernmx::server
                 }
 
                 // Step 3. Clean up
+                for (const std::string& room_name : destroyed_rooms) {
+                    room_history.erase(room_history.find(room_name));
+                }
                 rooms.remove_destroyed_rooms();
 
                 // Step 4. Sleep

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include "ringbuffer.h"
 #include "shared.h"
 
 using namespace std::string_literals;
