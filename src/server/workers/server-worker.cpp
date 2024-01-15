@@ -24,19 +24,8 @@ namespace
     std::vector<Message> room_events_to_messages(ServerRoom* room) {
         std::vector<Message> messages{};
         while (const std::optional<RoomEvent> event = room->events.pop()) {
-            switch (event->event_type) {
-            case RoomEvent::Created:
-            case RoomEvent::Destroyed:
-                // Created/destroyed have special handling in server_worker()
-                break;
-            case RoomEvent::ChatMessage:
-                messages.push_back(create_chat_echo(room->room_name(), event->event_text, event->origin_user_name,
-                    static_cast<int32_t>(event->timestamp.time_since_epoch().count())));
-                break;
-            default:
-                assert(false && "Unhandled RoomEvent type");
-                break;
-            }
+            messages.push_back(create_chat_echo(room->room_name(), event->event_text, event->origin_user_name,
+                static_cast<int32_t>(event->timestamp.time_since_epoch().count())));
         }
         return messages;
     }
@@ -49,24 +38,17 @@ namespace
         room_history[room_name].insert(std::move(room_event));
     }
 
+    /// Pack the history for \p room_name into a Message.
     Message get_room_history(RoomHistory& room_history, const std::string& room_name, size_t max_event_count) {
         Message history_msg = create_room_history(room_name, 0);
-        size_t event_count = 0;
         if (room_history.contains(room_name)) {
-            history_msg.values["events"s] = nlohmann::json::array();
             for (RoomEvent& event : room_history[room_name]) {
-                nlohmann::json event_json = nlohmann::json::object();
-                event_json["timestamp"s] = static_cast<int32_t>(event.timestamp.
-                    time_since_epoch().count());
-                event_json["user_name"s] = event.origin_user_name;
-                event_json["text"] = event.event_text;
-                history_msg.values["events"s].push_back(std::move(event_json));
-                if (++event_count == max_event_count) {
+                if (add_room_history_event(history_msg, static_cast<int32_t>(event.timestamp.
+                        time_since_epoch().count()), event.origin_user_name, event.event_text) == max_event_count) {
                     break;
                 }
             }
         }
-        history_msg.values["event_count"s] = static_cast<int32_t>(event_count);
         return history_msg;
     }
 }
@@ -119,10 +101,6 @@ namespace tavernmx::server
                             if (!room_name.empty()) {
                                 if (const std::shared_ptr<ServerRoom> room = rooms.create_room(room_name)) {
                                     TMX_INFO("Room created (client request): #{}", room->room_name());
-                                    room->events.push({
-                                        .event_type = RoomEvent::Created,
-                                        .origin_user_name = client->connected_user_name
-                                    });
                                     room->joined_clients.emplace_back(client);
                                     new_rooms.push_back(std::move(room_name));
                                 } else {
@@ -167,7 +145,6 @@ namespace tavernmx::server
                             auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                             if (const std::shared_ptr<ServerRoom> room = rooms[room_name]) {
                                 RoomEvent room_event{
-                                    .event_type = RoomEvent::ChatMessage,
                                     .origin_user_name = client->connected_user_name,
                                     .event_text = message_value_or<std::string>(*msg, "text"s)
                                 };

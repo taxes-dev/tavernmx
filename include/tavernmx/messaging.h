@@ -12,7 +12,10 @@
 namespace tavernmx::messaging
 {
     /// Data type for transport characters
-    using CharType = unsigned char;
+    using CharType = uint8_t;
+
+    /// Shorthand for json type dependency.
+    using json = nlohmann::json;
 
     /**
      * @brief Structure for sending messages over the network.
@@ -25,6 +28,15 @@ namespace tavernmx::messaging
         uint32_t payload_size{ 0 };
         /// Payload data.
         std::vector<CharType> payload{};
+
+        /**
+         * @brief Set the payload to contain \p value. Also updates the value of payload_size.
+         * @param value std::vector<CharType>
+         */
+        void set_payload(std::vector<CharType> value) {
+            this->payload = std::move(value);
+            this->payload_size = static_cast<int32_t>(this->payload.size());
+        }
     };
 
     /**
@@ -127,6 +139,13 @@ namespace tavernmx::messaging
     size_t apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset = 0);
 
     /**
+     * @brief Converts a Message struct into a JSON representation.
+     * @param message Message
+     * @return nlohmann::json
+     */
+    json message_to_json(const Message& message);
+
+    /**
      * @brief Converts \p block into a set of bytes.
      * @param block MessageBlock
      * @return std::vector<CharType>
@@ -141,11 +160,24 @@ namespace tavernmx::messaging
     MessageBlock pack_message(const Message& message);
 
     /**
-     * @brief Packs zero or more \p messages into one or more MessageBlock structs.
-     * @param messages std::vector<Message>
-     * @return std::vector<MessageBlock>
+     * @brief Packs zero or more \p messages into a MessageBlock struct.
+     * @tparam Iterator Forward iterator of Message structs.
+     * @param begin Beginning of the range of Message structs to pack.
+     * @param end End of the range of Message structs to pack.
+     * @return MessageBlock
      */
-    std::vector<MessageBlock> pack_messages(const std::vector<Message>& messages);
+    template <class Iterator>
+        requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, Message>
+    MessageBlock pack_messages(Iterator begin, Iterator end) {
+        json group_json = json::array();
+        std::for_each(begin, end, [&group_json](typename Iterator::reference message) {
+            group_json.push_back(message_to_json(message));
+        });
+
+        MessageBlock block{};
+        block.set_payload(json::to_msgpack(group_json));
+        return block;
+    }
 
     /**
      * @brief Unpacks zero or more messages from \p block.
@@ -253,9 +285,9 @@ namespace tavernmx::messaging
     }
 
     /**
-     * @brief Create a ROOM_HISTORY Message struct to request room history.
+     * @brief Create a ROOM_HISTORY Message struct to request or send room history.
      * @param room_name (copied) The room's unique name.
-     * @param event_count The maximum number of events to retrieve.
+     * @param event_count The maximum number of events to retrieve, or the count of events to send.
      * @return Message
      * @note \p event_count must be between 0 and ROOM_HISTORY_MAX_ENTRIES (inclusive).
      */
@@ -265,6 +297,18 @@ namespace tavernmx::messaging
                         .values = { { "room_name", std::move(room_name) },
                                     { "event_count", event_count } } };
     }
+
+    /**
+     * @brief Adds event data to \p room_history_message. Will automatically increment the
+     * event count as well.
+     * @param room_history_message Message of type MessageType::ROOM_HISTORY.
+     * @param timestamp Time of the event, in seconds from epoch.
+     * @param origin_user_name (copied) Origin user name.
+     * @param text (copied) Line of chat text.
+     * @return The number of events in \p room_history_message after inserting the event data.
+     */
+    int32_t add_room_history_event(Message& room_history_message,
+        int32_t timestamp, std::string origin_user_name, std::string text);
 
     /**
      * @brief Create a CHAT_SEND Message struct to send a chat message to the server.

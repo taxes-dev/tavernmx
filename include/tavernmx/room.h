@@ -33,16 +33,9 @@ namespace tavernmx::rooms
         /// Timestamp of the event.
         EventTimeStamp timestamp{ time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()) };
 
-        /// Type of event.
-        enum
-        {
-            ChatMessage,
-            Created,
-            Destroyed,
-        } event_type{};
-
         /// The user that originated the event, if any.
         std::string origin_user_name{};
+
         /// Event text to be displayed, if any.
         std::string event_text{};
     };

@@ -293,13 +293,5 @@ namespace tavernmx::rooms
             }
             this->joined_clients.push_back(client);
         }
-
-        /**
-         * @brief Mark this chat room to be destroyed.
-         */
-        void request_destroy() override {
-            Room::request_destroy();
-            this->events.push({ .event_type = RoomEvent::Destroyed });
-        }
     };
 }

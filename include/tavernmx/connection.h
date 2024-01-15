@@ -104,10 +104,9 @@ namespace tavernmx
         template <typename Iterator>
             requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, messaging::Message>
         void send_messages(Iterator begin, Iterator end) {
-            // TODO: ditch intermediary container
-            const std::vector<messaging::Message> messages{ begin, end };
-            const std::vector<messaging::MessageBlock> blocks = messaging::pack_messages(messages);
-            this->send_message_blocks(std::cbegin(blocks), std::cend(blocks));
+            if (begin != end) {
+                this->send_message_block(messaging::pack_messages(begin, end));
+            }
         };
 
         /**
@@ -157,7 +156,8 @@ namespace tavernmx
          * @note This is a specialized form of wait_for(messaging::MessageType, ssl::Milliseconds) that
          * will block until either an ACK or a NAK is received.
          */
-        std::optional<messaging::Message> wait_for_ack_or_nak(ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
+        std::optional<messaging::Message> wait_for_ack_or_nak(
+            ssl::Milliseconds milliseconds = ssl::SSL_TIMEOUT_MILLISECONDS);
 
     protected:
         ssl::ssl_unique_ptr<BIO> bio{ nullptr };

@@ -11,24 +11,18 @@
 #include <arpa/inet.h>
 #endif
 
-using json = nlohmann::json;
+using namespace std::string_literals;
 
-namespace
+namespace tavernmx::messaging
 {
-    constexpr size_t TARGET_BLOCK_SIZE = 1400;
-
-    json message_to_json(const tavernmx::messaging::Message& message) {
+    json message_to_json(const Message& message) {
         json message_json = json::object();
         message_json["message_type"] = message.message_type;
         message_json["values"] = message.values;
         return message_json;
     }
-}
 
-namespace tavernmx::messaging
-{
-    size_t
-    apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset) {
+    size_t apply_buffer_to_block(const std::span<CharType>& buffer, MessageBlock& block, size_t payload_offset) {
         if (buffer.empty()) {
             return 0;
         }
@@ -85,8 +79,7 @@ namespace tavernmx::messaging
         MessageBlock block{};
         json group_json = json::array();
         group_json.push_back(message_to_json(message));
-        block.payload = json::to_msgpack(group_json);
-        block.payload_size = block.payload.size();
+        block.set_payload(json::to_msgpack(group_json));
         return block;
     }
 
@@ -101,10 +94,8 @@ namespace tavernmx::messaging
             group_json.push_back(message_to_json(message));
         }
 
-        //TODO: split blocks by size
         MessageBlock block{};
-        block.payload = json::to_msgpack(group_json);
-        block.payload_size = static_cast<int32_t>(block.payload.size());
+        block.set_payload(json::to_msgpack(group_json));
         blocks.push_back(std::move(block));
 
         return blocks;
@@ -127,5 +118,26 @@ namespace tavernmx::messaging
         }
 
         return messages;
+    }
+
+    int32_t add_room_history_event(Message& room_history_message,
+        int32_t timestamp, std::string origin_user_name, std::string text) {
+        assert(room_history_message.message_type == MessageType::ROOM_HISTORY);
+        if (!room_history_message.values.contains("events"s)) {
+            room_history_message.values["events"s] = nlohmann::json::array();
+        }
+        assert(room_history_message.values["events"].is_array());
+
+        json event_json = json::object();
+        event_json["timestamp"s] = timestamp;
+        event_json["user_name"s] = std::move(origin_user_name);
+        event_json["text"s] = std::move(text);
+        room_history_message.values["events"].push_back(std::move(event_json));
+
+        int32_t event_count = room_history_message.values.value("event_count"s, 0);
+        ++event_count;
+        assert(event_count <= ROOM_HISTORY_MAX_ENTRIES);
+        room_history_message.values["event_count"s] = event_count;
+        return event_count;
     }
 }

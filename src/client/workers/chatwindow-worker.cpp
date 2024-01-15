@@ -55,7 +55,6 @@ namespace
                 {
                     .timestamp = EventTimeStamp{
                         std::chrono::seconds{ json_value["timestamp"s].get<int32_t>() } },
-                    .event_type = RoomEvent::ChatMessage,
                     .origin_user_name = json_value.value("user_name"s, "(unknown)"s),
                     .event_text = json_value.value("text", ""s),
                 }
@@ -165,7 +164,6 @@ namespace tavernmx::client
                             {
                                 .timestamp = EventTimeStamp{
                                     std::chrono::seconds{ message_value_or(*msg, "timestamp"s, 0) } },
-                                .event_type = RoomEvent::ChatMessage,
                                 .origin_user_name = message_value_or(*msg, "user_name"s, "(unknown)"s),
                                 .event_text = message_value_or(*msg, "text"s, ""s),
                             }
