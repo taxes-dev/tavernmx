@@ -38,6 +38,27 @@ namespace
     }
 
     /**
+     * @brief Convert the JSON for a single room event into a ClientRoomEvent struct.
+     * @param event_json nlohmann::json object containing room event data.
+     * @return ClientRoomEvent
+     */
+    ClientRoomEvent event_json_to_room_event(const json& event_json) {
+        assert(event_json.contains("timestamp"s) &&
+            event_json.contains("user_name"s) &&
+            event_json.contains("timestamp"s));
+        return {
+            {
+                .timestamp = EventTimeStamp{
+                    std::chrono::seconds{ event_json.value("timestamp"s, 0) } },
+                .origin_user_name = event_json.value("user_name"s, ""s),
+                .event_text = event_json.value("text", ""s),
+            },
+            .timestamp_text = fmt::format("{:%0I:%M %p}",
+                fmt::localtime(event_json.value("timestamp"s, 0)))
+        };
+    }
+
+    /**
      * @brief Take a \p message of type ROOM_HISTORY and convert it back to a set of events.
      * @param message Message
      * @return std::vector<ClientRoomEvent>
@@ -45,23 +66,13 @@ namespace
     std::vector<ClientRoomEvent> room_history_message_to_events(const Message& message) {
         const auto event_count = static_cast<size_t>(message_value_or<int32_t>(message, "event_count"s));
         std::vector<ClientRoomEvent> events{};
-        if (event_count < 1) {
-            return events;
+        if (message.values.contains("events"s)) {
+            for (const auto& item : message.values["events"s].items()) {
+                events.push_back(event_json_to_room_event(item.value()));
+            }
         }
-
-        for (const auto& item : message.values["events"s].items()) {
-            const nlohmann::json& json_value = item.value();
-            ClientRoomEvent event{
-                {
-                    .timestamp = EventTimeStamp{
-                        std::chrono::seconds{ json_value["timestamp"s].get<int32_t>() } },
-                    .origin_user_name = json_value.value("user_name"s, "(unknown)"s),
-                    .event_text = json_value.value("text", ""s),
-                }
-            };
-            event.timestamp_text = fmt::format("{:%0I:%M %p}",
-                fmt::localtime(event.timestamp.time_since_epoch().count()));
-            events.push_back(std::move(event));
+        if (event_count != events.size()) {
+            TMX_WARN("Event count mismatch: {} vs {}", event_count, events.size());
         }
         return events;
     }
@@ -69,14 +80,6 @@ namespace
 
 namespace tavernmx::client
 {
-
-    std::string room_event_to_string(const RoomEvent& event) {
-        return fmt::format("[{:%H:%M}] {}: {}",
-            fmt::localtime(event.timestamp.time_since_epoch().count()),
-            event.origin_user_name,
-            event.event_text);
-    }
-
     void chat_window_worker(std::unique_ptr<ServerConnection> connection, ChatWindowScreen* screen) {
         std::shared_ptr<ThreadSafeQueue<Message>> messages_in = connection->messages_in,
             messages_out = connection->messages_out;
@@ -100,7 +103,8 @@ namespace tavernmx::client
                     TMX_INFO("UI message: {}", static_cast<int32_t>(msg->message_type));
                     switch (msg->message_type) {
                     case MessageType::ROOM_LIST: {
-                        std::string current_room_name = chat_screen->current_room_name;
+                        // current_room_name stored here since update_rooms() will modify it
+                        const std::string current_room_name = chat_screen->current_room_name;
                         client_rooms.clear();
                         for (auto& [key, value] : msg->values.items()) {
                             if (const std::shared_ptr<ClientRoom> room =
@@ -118,8 +122,8 @@ namespace tavernmx::client
                     }
                     break;
                     case MessageType::ROOM_CREATE: {
-                        auto room_name = message_value_or<std::string>(*msg, "room_name"s);
-                        std::string current_room_name = chat_screen->current_room_name;
+                        const auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                        const std::string current_room_name = chat_screen->current_room_name;
                         if (const std::shared_ptr<ClientRoom> room = client_rooms.create_room(room_name)) {
                             TMX_INFO("Created room: #{}", room->room_name());
                             chat_screen->update_rooms(client_rooms.room_names());
@@ -133,8 +137,8 @@ namespace tavernmx::client
                     }
                     break;
                     case MessageType::ROOM_DESTROY: {
-                        auto room_name = message_value_or<std::string>(*msg, "room_name"s);
-                        std::string current_room_name = chat_screen->current_room_name;
+                        const auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                        const std::string current_room_name = chat_screen->current_room_name;
                         if (std::shared_ptr<ClientRoom> room = client_rooms[room_name]) {
                             TMX_INFO("Destroyed room: #{}", room->room_name());
                             room->request_destroy();
@@ -151,26 +155,18 @@ namespace tavernmx::client
                     }
                     break;
                     case MessageType::ROOM_HISTORY: {
-                        auto room_name = message_value_or<std::string>(*msg, "room_name"s);
+                        const auto room_name = message_value_or<std::string>(*msg, "room_name"s);
                         if (std::shared_ptr<ClientRoom> room = client_rooms[room_name]) {
-                            std::vector<ClientRoomEvent> events = room_history_message_to_events(*msg);
-                            chat_screen->rewrite_chat_history(room->room_name(), std::begin(events), std::end(events));
+                            const std::vector<ClientRoomEvent> events = room_history_message_to_events(*msg);
+                            chat_screen->rewrite_chat_history(room->room_name(), std::cbegin(events),
+                                std::cend(events));
                         }
                     }
                     break;
                     case MessageType::CHAT_ECHO: {
-                        auto room_name = message_value_or<std::string>(*msg, "room_name");
-                        ClientRoomEvent event{
-                            {
-                                .timestamp = EventTimeStamp{
-                                    std::chrono::seconds{ message_value_or(*msg, "timestamp"s, 0) } },
-                                .origin_user_name = message_value_or(*msg, "user_name"s, "(unknown)"s),
-                                .event_text = message_value_or(*msg, "text"s, ""s),
-                            }
-                        };
-                        event.timestamp_text = fmt::format("{:%0I:%M %p}",
-                            fmt::localtime(event.timestamp.time_since_epoch().count()));
-                        chat_screen->insert_chat_history_event(room_name, std::move(event));
+                        const auto room_name = message_value_or<std::string>(*msg, "room_name");
+                        chat_screen->insert_chat_history_event(room_name,
+                            event_json_to_room_event(msg->values));
                     }
                     break;
                     default:
