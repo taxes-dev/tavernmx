@@ -161,7 +161,7 @@ int main(int argv, char** argc) {
             SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
             SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
             SDL_RenderClear(renderer);
-            ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+            ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
             SDL_RenderPresent(renderer);
         }
 
