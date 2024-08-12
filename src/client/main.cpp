@@ -41,6 +41,10 @@ int main(int argv, char** argc) {
         TMX_INFO("Client starting.");
 
         // Setup SDL
+#ifdef TMX_LINUX
+        // Default to X11 b/c Wayland on Gnome won't show window decorations.
+        SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
+#endif
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
             TMX_ERR("SDL Error: {}", SDL_GetError());
             return 1;
@@ -66,6 +70,7 @@ int main(int argv, char** argc) {
         SDL_RendererInfo info{};
         SDL_GetRendererInfo(renderer, &info);
         TMX_INFO("Current SDL_Renderer: {}", info.name);
+        TMX_INFO("Current SDL video driver: {}", SDL_GetCurrentVideoDriver());
 
         // Create ImGUI context
         IMGUI_CHECKVERSION();

@@ -46,6 +46,8 @@ namespace
         assert(event_json.contains("timestamp"s) &&
             event_json.contains("user_name"s) &&
             event_json.contains("timestamp"s));
+        std::string timestamp_text = fmt::format("{:%I:%M %p}",
+                fmt::localtime(event_json.value("timestamp"s, 0)));
         return {
             {
                 .timestamp = EventTimeStamp{
@@ -53,8 +55,7 @@ namespace
                 .origin_user_name = event_json.value("user_name"s, ""s),
                 .event_text = event_json.value("text", ""s),
             },
-            .timestamp_text = fmt::format("{:%0I:%M %p}",
-                fmt::localtime(event_json.value("timestamp"s, 0)))
+            std::move(timestamp_text)
         };
     }
 
