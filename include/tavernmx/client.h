@@ -97,7 +97,7 @@ namespace tavernmx::client
          * @param config_path file system path to the client configuration .json
          * @throws ClientError if the client configuration file is not found or invalid
          */
-        explicit ClientConfiguration(const std::string& config_path);
+        explicit ClientConfiguration(std::string_view config_path);
 
         /**
          * @brief The host name of the server to connect to.

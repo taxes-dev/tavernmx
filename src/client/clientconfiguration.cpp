@@ -6,7 +6,7 @@ using json = nlohmann::json;
 
 namespace tavernmx::client
 {
-    ClientConfiguration::ClientConfiguration(const std::string& config_path) {
+    ClientConfiguration::ClientConfiguration(std::string_view config_path) {
         std::ifstream config_file{ config_path };
         if (!config_file.good()) {
             throw ClientError{ "Unable to open config file" };

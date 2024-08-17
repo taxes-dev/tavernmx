@@ -14,8 +14,8 @@ namespace tavernmx::server
     void client_worker(std::shared_ptr<ClientConnection> client) {
         try {
             // Expect client to send HELLO as the first message
-            if (std::optional<Message> hello = client->wait_for(MessageType::HELLO)) {
-                client->connected_user_name = message_value_or<std::string>(*hello, "user_name"s);
+            if (const std::optional<Message> hello = client->wait_for(MessageType::HELLO)) {
+                client->connected_user_name = message_value_or<std::string>(*hello, "user_name");
                 TMX_INFO("Client connected: {}", client->connected_user_name);
                 // TODO: validate user name
                 client->send_message(create_ack());
@@ -33,9 +33,9 @@ namespace tavernmx::server
                 std::vector<Message> send_messages{};
 
                 // 1. Read waiting messages on socket
-                if (const std::optional<MessageBlock> block = client->receive_message()) {
+                if (std::optional<MessageBlock> block = client->receive_message()) {
                     TMX_INFO("Receive message block: {} bytes", block->payload_size);
-                    for (const Message& msg : unpack_messages(block.value())) {
+                    for (Message& msg : unpack_messages(block.value())) {
                         TMX_INFO("Receive message: {}", static_cast<int32_t>(msg.message_type));
                         switch (msg.message_type) {
                         case MessageType::HEARTBEAT:

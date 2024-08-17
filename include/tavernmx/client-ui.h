@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -137,7 +138,7 @@ namespace tavernmx::client
          * @brief Sets an error message to be displayed in a dialog box.
          * @param message (copied) std::string
          */
-        void set_error(std::string message) { this->current_error = std::move(message); };
+        void set_error(std::string_view message) { this->current_error = std::string{message}; };
 
         /**
          * @brief Call this when the viewport dimensions have changed.
@@ -299,8 +300,8 @@ namespace tavernmx::client
          * @param host_name The currently connected host name, for display purposes only.
          * @param user_name The currently connected user name, for display purposes only.
          */
-        ChatWindowScreen(const std::string& host_name, const std::string& user_name) {
-            this->window_label = user_name + "@" + host_name;
+        ChatWindowScreen(std::string_view host_name, std::string_view user_name) {
+            this->window_label = std::string{user_name} + "@" + std::string{host_name};
             this->room_names = new char*[0];
         };
 
@@ -324,7 +325,7 @@ namespace tavernmx::client
          * @note This can also result in an update to current_room_name / current_room_index. Also
          * it will not trigger MSG_ROOM_CHANGED.
          */
-        size_t select_room_by_name(const std::string& room_name);
+        size_t select_room_by_name(std::string_view room_name);
 
         /**
          * @brief Update the room list in the display.
@@ -337,7 +338,7 @@ namespace tavernmx::client
          * @param event (copied) tavernmx::rooms::ClientRoomEvent
          * @note Thread-safe.
          */
-        void insert_chat_history_event(const std::string& room_name, rooms::ClientRoomEvent event);
+        void insert_chat_history_event(std::string_view room_name, rooms::ClientRoomEvent event);
 
         /**
          * @brief Replace the chat history for \p room_name with a new set of events.
@@ -350,7 +351,7 @@ namespace tavernmx::client
             requires std::forward_iterator<Iterator> && std::same_as<std::iter_value_t<Iterator>, rooms::ClientRoomEvent>
         void rewrite_chat_history(const std::string& room_name, Iterator begin, Iterator end) {
             std::lock_guard lock_guard{ this->chat_history_mutex };
-            if (this->chat_room_history.find(room_name) == this->chat_room_history.end()) {
+            if (this->chat_room_history.contains(room_name)) {
                 this->chat_room_history[room_name] = {};
             } else {
                 this->chat_room_history[room_name].reset();
@@ -362,10 +363,14 @@ namespace tavernmx::client
         }
 
     private:
+        struct StringHash : std::hash<std::string_view>
+        {
+         using is_transparent = void;
+        };
         std::string window_label{};
         char** room_names{ nullptr };
         size_t room_names_size{ 0 };
-        std::unordered_map<std::string, RingBuffer<rooms::ClientRoomEvent, CHAT_ROOM_HISTORY_SIZE>> chat_room_history{};
+        std::unordered_map<std::string, RingBuffer<rooms::ClientRoomEvent, CHAT_ROOM_HISTORY_SIZE>, StringHash, std::equal_to<>> chat_room_history{};
         std::mutex chat_history_mutex{};
         bool reset_scroll_pos{ false };
         bool reset_text_focus{ true };

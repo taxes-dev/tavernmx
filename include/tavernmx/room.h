@@ -4,6 +4,7 @@
 #include <concepts>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace tavernmx::rooms
@@ -23,7 +24,7 @@ namespace tavernmx::rooms
      *  - \p room_name can only contain alphanumeric characters or hyphen (-).
      *  - \p room_name can only begin or end with alphanumeric characters.
      */
-    bool is_valid_room_name(const std::string& room_name);
+    bool is_valid_room_name(std::string_view room_name);
 
     /**
      * @brief Describes an individual event that occurred in a chat room.
@@ -48,10 +49,10 @@ namespace tavernmx::rooms
     public:
         /**
          * @brief Create a Room.
-         * @param room_name (copied) The room's unique name.
+         * @param room_name The room's unique name.
          */
-        explicit Room(std::string room_name)
-            : _room_name{ std::move(room_name) } {
+        explicit Room(std::string_view room_name)
+            : _room_name{ std::string{room_name} } {
         };
 
         virtual ~Room() = default;
@@ -133,7 +134,7 @@ namespace tavernmx::rooms
          * @note \p room_name must be unique to other rooms currently owned by the
          * RoomManager and be a valid room name (see is_valid_room_name(std::string)).
          */
-        std::shared_ptr<T> create_room(const std::string& room_name) {
+        std::shared_ptr<T> create_room(std::string_view room_name) {
             if (!is_valid_room_name(room_name)) {
                 return nullptr;
             }
@@ -141,7 +142,7 @@ namespace tavernmx::rooms
                 std::cend(this->_room_names)) {
                 return nullptr;
             }
-            this->_room_names.push_back(room_name);
+            this->_room_names.emplace_back(room_name);
             return this->active_rooms.emplace_back(std::move(std::make_shared<T>(room_name)));
         }
 
@@ -166,7 +167,7 @@ namespace tavernmx::rooms
          * @param room_name The unique name of the chat room.
          * @return A std::shared_ptr<T> if the room is found, otherwise nullptr.
          */
-        std::shared_ptr<T> operator[](const std::string& room_name) const {
+        std::shared_ptr<T> operator[](std::string_view room_name) const {
             auto it = std::find_if(std::cbegin(this->active_rooms), std::cend(this->active_rooms),
                 [&room_name](const std::shared_ptr<T>& room) {
                     return room->room_name() == room_name;

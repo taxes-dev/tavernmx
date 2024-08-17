@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <string_view>
 #include "room.h"
 
 namespace tavernmx::rooms
@@ -26,8 +27,8 @@ namespace tavernmx::rooms
          * @brief Create a ClientRoom.
          * @param room_name The room's unique name.
          */
-        explicit ClientRoom(std::string room_name)
-            : Room{ std::move(room_name) } {
+        explicit ClientRoom(std::string_view room_name)
+            : Room{ room_name } {
         };
 
         ClientRoom(const ClientRoom&) = delete;

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -97,10 +98,10 @@ namespace tavernmx::messaging
     /**
      * @brief Check if \p message contains a root-level value specified by \p key.
      * @param message Message
-     * @param key std::string
+     * @param key std::string_view
      * @return true if \p key is present in the values collection of \p message, otherwise false.
      */
-    inline bool message_has_value(const Message& message, const std::string& key) {
+    inline bool message_has_value(const Message& message, std::string_view key) {
         return message.values.is_object() && message.values.contains(key);
     }
 
@@ -108,13 +109,13 @@ namespace tavernmx::messaging
      * @brief Attempt to retrieve the root-level value specified by \p key in \p message.
      * @tparam T A type supported by the JSON library. Must be default constructible.
      * @param message Message
-     * @param key std::string
+     * @param key std::string_view
      * @param default_value A default value to return if \p key isn't found.
      * @return The value associated with \p key if it is present, otherwise \p default_value.
      */
     template <typename T>
         requires std::is_default_constructible_v<T>
-    T message_value_or(const Message& message, const std::string& key, const T& default_value = T{}) {
+    T message_value_or(const Message& message, std::string_view key, const T& default_value = T{}) {
         if (message.values.is_object() &&
             message.values.contains(key) &&
             message.values[key].is_primitive() &&
@@ -196,25 +197,25 @@ namespace tavernmx::messaging
 
     /**
      * @brief Creates a NAK Message struct.
-     * @param error (copied) An optional error message
+     * @param error An optional error message
      * @return Message
      */
-    inline Message create_nak(std::string error = std::string{}) {
+    inline Message create_nak(std::string_view error = {}) {
         return Message{
             .message_type = MessageType::NAK,
-            .values = { { "error", std::move(error) } }
+            .values = { { "error", std::string{error} } }
         };
     }
 
     /**
      * @brief Create a HELLO Message struct.
-     * @param user_name (copied) User name
+     * @param user_name User name
      * @return Message
      */
-    inline Message create_hello(std::string user_name) {
+    inline Message create_hello(std::string_view user_name) {
         return {
             .message_type = MessageType::HELLO,
-            .values = { { "user_name", std::move(user_name) } }
+            .values = { { "user_name", std::string{user_name} } }
         };
     }
 
@@ -256,45 +257,45 @@ namespace tavernmx::messaging
 
     /**
      * @brief Create a ROOM_CREATE Message struct to create a new chat room.
-     * @param room_name (copied) The room's unique name.
+     * @param room_name The room's unique name.
      * @return Message
      */
-    inline Message create_room_create(std::string room_name) {
+    inline Message create_room_create(std::string_view room_name) {
         return Message{ .message_type = MessageType::ROOM_CREATE,
-                        .values = { { "room_name", std::move(room_name) } } };
+                        .values = { { "room_name", std::string{room_name} } } };
     }
 
     /**
      * @brief Create a ROOM_JOIN Message struct to join a chat room.
-     * @param room_name (copied) The room's unique name.
+     * @param room_name The room's unique name.
      * @return Message
      */
-    inline Message create_room_join(std::string room_name) {
+    inline Message create_room_join(std::string_view room_name) {
         return Message{ .message_type = MessageType::ROOM_JOIN,
-                        .values = { { "room_name", std::move(room_name) } } };
+                        .values = { { "room_name", std::string{room_name} } } };
     }
 
     /**
      * @brief Create a ROOM_DESTROY Message struct to destroy an existing chat room.
-     * @param room_name (copied) The room's unique name.
+     * @param room_name The room's unique name.
      * @return Message
      */
-    inline Message create_room_destroy(std::string room_name) {
+    inline Message create_room_destroy(std::string_view room_name) {
         return Message{ .message_type = MessageType::ROOM_DESTROY,
-                        .values = { { "room_name", std::move(room_name) } } };
+                        .values = { { "room_name", std::string{room_name} } } };
     }
 
     /**
      * @brief Create a ROOM_HISTORY Message struct to request or send room history.
-     * @param room_name (copied) The room's unique name.
+     * @param room_name The room's unique name.
      * @param event_count The maximum number of events to retrieve, or the count of events to send.
      * @return Message
      * @note \p event_count must be between 0 and ROOM_HISTORY_MAX_ENTRIES (inclusive).
      */
-    inline Message create_room_history(std::string room_name, int32_t event_count = ROOM_HISTORY_MAX_ENTRIES) {
+    inline Message create_room_history(std::string_view room_name, int32_t event_count = ROOM_HISTORY_MAX_ENTRIES) {
         assert(event_count >= 0 && event_count <= ROOM_HISTORY_MAX_ENTRIES);
         return Message{ .message_type = MessageType::ROOM_HISTORY,
-                        .values = { { "room_name", std::move(room_name) },
+                        .values = { { "room_name", std::string{room_name} },
                                     { "event_count", event_count } } };
     }
 
@@ -303,40 +304,40 @@ namespace tavernmx::messaging
      * event count as well.
      * @param room_history_message Message of type MessageType::ROOM_HISTORY.
      * @param timestamp Time of the event, in seconds from epoch.
-     * @param origin_user_name (copied) Origin user name.
-     * @param text (copied) Line of chat text.
+     * @param origin_user_name Origin user name.
+     * @param text Line of chat text.
      * @return The number of events in \p room_history_message after inserting the event data.
      */
     int32_t add_room_history_event(Message& room_history_message,
-        int32_t timestamp, std::string origin_user_name, std::string text);
+        int32_t timestamp, std::string_view origin_user_name, std::string_view text);
 
     /**
      * @brief Create a CHAT_SEND Message struct to send a chat message to the server.
-     * @param room_name (copied) Target room name.
-     * @param text (copied) Line of chat text.
+     * @param room_name Target room name.
+     * @param text Line of chat text.
      * @return Message
      */
-    inline Message create_chat_send(std::string room_name, std::string text) {
+    inline Message create_chat_send(std::string_view room_name, std::string_view text) {
         return Message{ .message_type = MessageType::CHAT_SEND,
-                        .values = { { "room_name", std::move(room_name) },
-                                    { "text", std::move(text) } } };
+                        .values = { { "room_name", std::string{room_name} },
+                                    { "text", std::string{text} } } };
     }
 
     /**
      * @brief Create a CHAT_ECHO Message struct to send a chat message to a client.
-     * @param room_name (copied) Origin room name.
-     * @param text (copied) Line of chat text.
-     * @param user_name (copied) Orign user name.
+     * @param room_name Origin room name.
+     * @param text Line of chat text.
+     * @param user_name Orign user name.
      * @param timestamp Number of seconds since epoch when the event occurred.
      * @return Message
      */
-    inline Message create_chat_echo(std::string room_name, std::string text,
-        std::string user_name, int32_t timestamp) {
+    inline Message create_chat_echo(std::string_view room_name, std::string_view text,
+        std::string_view user_name, int32_t timestamp) {
         return Message{ .message_type = MessageType::CHAT_ECHO,
                         .values = {
-                            { "room_name", std::move(room_name) },
-                            { "text", std::move(text) },
-                            { "user_name", std::move(user_name) },
+                            { "room_name", std::string{room_name} },
+                            { "text", std::string{text} },
+                            { "user_name", std::string{user_name} },
                             { "timestamp", timestamp }
                         } };
     }

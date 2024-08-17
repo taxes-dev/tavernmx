@@ -16,14 +16,14 @@ using namespace tavernmx::ssl;
 namespace
 {
 	tavernmx::server::ServerError ssl_errors_to_exception(const char* message) {
-		char buffer[256];
 		std::string msg{ message };
 		while (const unsigned long err = ERR_get_error() != 0) {
+			char buffer[256];
 			ERR_error_string_n(err, buffer, sizeof(buffer));
 			msg += ", ";
 			msg += buffer;
 		}
-		return tavernmx::server::ServerError{ msg };
+		return tavernmx::server::ServerError{ std::move(msg) };
 	}
 }
 

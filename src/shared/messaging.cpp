@@ -121,7 +121,7 @@ namespace tavernmx::messaging
     }
 
     int32_t add_room_history_event(Message& room_history_message,
-        int32_t timestamp, std::string origin_user_name, std::string text) {
+        int32_t timestamp, std::string_view origin_user_name, std::string_view text) {
         assert(room_history_message.message_type == MessageType::ROOM_HISTORY);
         if (!room_history_message.values.contains("events"s)) {
             room_history_message.values["events"s] = nlohmann::json::array();
@@ -130,9 +130,9 @@ namespace tavernmx::messaging
 
         json event_json = json::object();
         event_json["timestamp"s] = timestamp;
-        event_json["user_name"s] = std::move(origin_user_name);
-        event_json["text"s] = std::move(text);
-        room_history_message.values["events"].push_back(std::move(event_json));
+        event_json["user_name"s] = std::string{origin_user_name};
+        event_json["text"s] = std::string{text};
+        room_history_message.values["events"s].push_back(std::move(event_json));
 
         int32_t event_count = room_history_message.values.value("event_count"s, 0);
         ++event_count;
