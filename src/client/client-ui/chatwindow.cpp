@@ -1,3 +1,4 @@
+#include <bit>
 #include <cstring>
 #include <utility>
 #include <imgui.h>
@@ -17,11 +18,11 @@ namespace
 	ImU32 chat_name_to_color(std::string_view chat_name) {
 		uint32_t hash = 0;
 		for (const unsigned char c : chat_name) {
-			hash = static_cast<uint32_t>(c) + ((hash << 5) - hash);
+			hash = static_cast<uint32_t>(c) + (std::rotl(hash, 5) - hash);
 		}
 
-		uint32_t r = hash >> 16 & 0xff;
-		uint32_t g = hash >> 8 & 0xff;
+		uint32_t r = std::rotr(hash, 16) & 0xff;
+		uint32_t g = std::rotr(hash, 8) & 0xff;
 		uint32_t b = hash & 0xff;
 		while (color_too_dark(r, g, b)) {
 			r += 20;
