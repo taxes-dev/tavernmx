@@ -7,4 +7,4 @@ CMakeSettings.json
 *.log
 *.ini
 .DS_Store
-
+vcpkg_installed/
