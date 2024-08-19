@@ -7,7 +7,7 @@ using json = nlohmann::json;
 namespace tavernmx::server
 {
 	ServerConfiguration::ServerConfiguration(std::string_view config_path) {
-		std::ifstream config_file{ config_path };
+		std::ifstream config_file{ std::string{config_path} };
 		if (!config_file.good()) {
 			throw ServerError{ "Unable to open config file" };
 		}
