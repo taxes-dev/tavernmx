@@ -6,3 +6,5 @@ CMakeSettings.json
 *.pem
 *.log
 *.ini
+.DS_Store
+
