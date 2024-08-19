@@ -68,7 +68,7 @@ namespace tavernmx::server
 		ssl_unique_ptr<BIO> bio = accept_new_tcp_connection(this->accept_bio.get());
 		if (bio == nullptr) {
 			std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
-			return {};
+			return std::nullopt;
 		}
 		bio = std::move(bio) | ssl_unique_ptr<BIO>(BIO_new_ssl(this->ctx.get(), NEWSSL_SERVER));
 

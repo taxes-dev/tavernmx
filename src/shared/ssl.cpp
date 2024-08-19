@@ -80,7 +80,7 @@ namespace tavernmx::ssl
 		size_t rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
 		if (rcvd == 0) {
 			std::this_thread::sleep_for(std::chrono::milliseconds{ SSL_RETRY_MILLISECONDS });
-			return {};
+			return std::nullopt;
 		}
 
 		MessageBlock block{};
@@ -91,7 +91,7 @@ namespace tavernmx::ssl
 		}
 
 		if (block.payload_size == 0) {
-			return {};
+			return std::nullopt;
 		}
 		return block;
 	}

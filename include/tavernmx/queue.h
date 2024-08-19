@@ -96,7 +96,7 @@ namespace tavernmx
         std::optional<T> pop() {
             std::lock_guard guard{ this->_mutex };
             if (this->_queue.empty()) {
-                return {};
+                return std::nullopt;
             }
             T returned = std::move(this->_queue.front());
             this->_queue.pop();

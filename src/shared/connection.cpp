@@ -62,7 +62,7 @@ namespace tavernmx
 					.count();
 		} while (elapsed < milliseconds);
 
-		return {};
+		return std::nullopt;
 	}
 
 	std::optional<Message> BaseConnection::wait_for_ack_or_nak(ssl::Milliseconds milliseconds) {
@@ -83,7 +83,7 @@ namespace tavernmx
 					.count();
 		} while (elapsed < milliseconds);
 
-		return {};
+		return std::nullopt;
 	}
 
 }
