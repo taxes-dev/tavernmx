@@ -2,6 +2,7 @@
 #include <bit>
 #include <cassert>
 #include <functional>
+#include <utility>
 #include "tavernmx/messaging.h"
 #include "tavernmx/platform.h"
 
@@ -39,7 +40,7 @@ namespace tavernmx::messaging
             header_it += sizeof(block.HEADER);
 
             if (const size_t remaining = buffer.size() - (header_it - std::cbegin(buffer));
-                remaining < sizeof(block.payload_size)) {
+                std::cmp_less(remaining, sizeof(block.payload_size))) {
                 return 0;
             }
             CharType payload_size_bytes[sizeof(block.payload_size)];
@@ -54,7 +55,7 @@ namespace tavernmx::messaging
             return block.payload.size();
         }
 
-        if (payload_offset < block.payload_size) {
+        if (std::cmp_less(payload_offset, block.payload_size)) {
             block.payload.insert(std::end(block.payload), std::cbegin(buffer), std::cend(buffer));
             return block.payload.size() - payload_offset;
         }
@@ -102,7 +103,7 @@ namespace tavernmx::messaging
 
     std::vector<Message> unpack_messages(const MessageBlock& block) {
         std::vector<Message> messages{};
-        if (block.payload_size < 1) {
+        if (std::cmp_less(block.payload_size, 1)) {
             return messages;
         }
 
@@ -135,7 +136,7 @@ namespace tavernmx::messaging
 
         int32_t event_count = room_history_message.values.value("event_count", 0);
         ++event_count;
-        assert(event_count <= ROOM_HISTORY_MAX_ENTRIES);
+        assert(std::cmp_less_equal(event_count, ROOM_HISTORY_MAX_ENTRIES));
         room_history_message.values["event_count"] = event_count;
         return event_count;
     }

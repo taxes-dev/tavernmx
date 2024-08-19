@@ -1,6 +1,7 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
@@ -85,7 +86,7 @@ namespace tavernmx::ssl
 
 		MessageBlock block{};
 		size_t applied = apply_buffer_to_block(std::span{ buffer, rcvd }, block);
-		while (applied > 0 && applied < block.payload_size) {
+		while (std::cmp_greater(applied, 0) && std::cmp_less(applied, block.payload_size)) {
 			rcvd = receive_bytes(ssl, bio, buffer, sizeof(buffer));
 			applied += apply_buffer_to_block(std::span{ buffer, rcvd }, block, applied);
 		}

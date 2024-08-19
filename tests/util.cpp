@@ -1,3 +1,5 @@
+#include <array>
+#include <utility>
 #include <catch.hpp>
 #include "tavernmx/util.h"
 
@@ -15,13 +17,14 @@ TEST_CASE("str_tolower") {
 TEST_CASE("tokenize_string") {
 	std::vector<std::string> output{};
 	tokenize_string("hello", ' ', output);
-	REQUIRE(output.size() == 1);
+	REQUIRE(std::cmp_equal(output.size(), 1));
 	REQUIRE(output[0] == "hello"s);
 	output.clear();
 
 	tokenize_string("hello world this is a string", ' ', output);
-	REQUIRE(output.size() == 6);
-	REQUIRE_THAT(output, RangeEquals<decltype(output)>({ "hello"s, "world"s, "this"s, "is"s, "a"s, "string"s }));
+	REQUIRE(std::cmp_equal(output.size(), 6));
+	//REQUIRE_THAT(output, RangeEquals<decltype(output)>({ "hello"s, "world"s, "this"s, "is"s, "a"s, "string"s }));
+	REQUIRE_THAT(output, RangeEquals(std::to_array<std::string>({ "hello"s, "world"s, "this"s, "is"s, "a"s, "string"s })));
 	output.clear();
 
 	tokenize_string("", ' ', output);
