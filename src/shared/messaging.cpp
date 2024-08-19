@@ -11,8 +11,6 @@
 #include <arpa/inet.h>
 #endif
 
-using namespace std::string_literals;
-
 namespace tavernmx::messaging
 {
     json message_to_json(const Message& message) {
@@ -39,8 +37,9 @@ namespace tavernmx::messaging
             }
             // found, extract the block size
             header_it += sizeof(block.HEADER);
-            const size_t remaining = buffer.size() - (header_it - std::cbegin(buffer));
-            if (remaining < sizeof(block.payload_size)) {
+
+            if (const size_t remaining = buffer.size() - (header_it - std::cbegin(buffer));
+                remaining < sizeof(block.payload_size)) {
                 return 0;
             }
             CharType payload_size_bytes[sizeof(block.payload_size)];
@@ -123,21 +122,21 @@ namespace tavernmx::messaging
     int32_t add_room_history_event(Message& room_history_message,
         int32_t timestamp, std::string_view origin_user_name, std::string_view text) {
         assert(room_history_message.message_type == MessageType::ROOM_HISTORY);
-        if (!room_history_message.values.contains("events"s)) {
-            room_history_message.values["events"s] = nlohmann::json::array();
+        if (!room_history_message.values.contains("events")) {
+            room_history_message.values["events"] = nlohmann::json::array();
         }
         assert(room_history_message.values["events"].is_array());
 
         json event_json = json::object();
-        event_json["timestamp"s] = timestamp;
-        event_json["user_name"s] = std::string{origin_user_name};
-        event_json["text"s] = std::string{text};
-        room_history_message.values["events"s].push_back(std::move(event_json));
+        event_json["timestamp"] = timestamp;
+        event_json["user_name"] = std::string{origin_user_name};
+        event_json["text"] = std::string{text};
+        room_history_message.values["events"].push_back(std::move(event_json));
 
-        int32_t event_count = room_history_message.values.value("event_count"s, 0);
+        int32_t event_count = room_history_message.values.value("event_count", 0);
         ++event_count;
         assert(event_count <= ROOM_HISTORY_MAX_ENTRIES);
-        room_history_message.values["event_count"s] = event_count;
+        room_history_message.values["event_count"] = event_count;
         return event_count;
     }
 }
