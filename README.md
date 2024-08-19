@@ -34,13 +34,13 @@ cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=<vcpkg root>/scripts/build
 
 The project uses several external dependencies, but they should be automatically resolved by vcpkg.
 
-* [OpenSSL 3.1.4](https://www.openssl.org/)
-* [nlohmann-json 3.11.2](https://json.nlohmann.me/)
-* [spdlog 1.12.0](https://github.com/gabime/spdlog)
-* [SDL 2.28.4](https://www.libsdl.org/) - client only
-* [Dear ImGui](https://github.com/ocornut/imgui) - client only
-* [BS::thread_pool 4.0.1](https://github.com/bshoshany/thread-pool) - server only
-* [Catch2 3.4.0](https://github.com/catchorg/Catch2) - tests only
+* [OpenSSL 3.3.1](https://www.openssl.org/)
+* [nlohmann-json 3.11.3](https://json.nlohmann.me/)
+* [spdlog 1.14.1](https://github.com/gabime/spdlog)
+* [SDL 2.30.5](https://www.libsdl.org/) - client only
+* [Dear ImGui 1.90.7](https://github.com/ocornut/imgui) - client only
+* [BS::thread_pool 4.1.0](https://github.com/bshoshany/thread-pool) - server only
+* [Catch2 3.6.0](https://github.com/catchorg/Catch2) - tests only
 
 ## Running
 
